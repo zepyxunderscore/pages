@@ -22,15 +22,118 @@
 }
 
 ::selection {
-  background: rgba(34, 197, 94, 0.25);
+  background: rgba(255, 255, 255, 0.15);
 }
 
 body {
   margin: 0;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(0.6);
   cursor: pointer;
+}
+
+input, button, textarea, select {
+  font-family: inherit;
+}
+
+.tabular-nums {
+  font-family: 'Space Mono', monospace;
+}
+
+.rounded-sm, .rounded {
+  border-radius: 0;
+}
+
+/* Nothing dot-matrix animation */
+@keyframes dotPulse {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+
+@keyframes dotSequence {
+  0%, 100% { opacity: 0.15; }
+  20% { opacity: 1; }
+}
+
+.dot-seq-1 { animation: dotSequence 2.4s ease-in-out infinite; }
+.dot-seq-2 { animation: dotSequence 2.4s ease-in-out 0.3s infinite; }
+.dot-seq-3 { animation: dotSequence 2.4s ease-in-out 0.6s infinite; }
+.dot-seq-4 { animation: dotSequence 2.4s ease-in-out 0.9s infinite; }
+.dot-seq-5 { animation: dotSequence 2.4s ease-in-out 1.2s infinite; }
+
+@keyframes glyphScan {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+.glyph-scan {
+  animation: glyphScan 3s ease-in-out infinite;
+}
+
+/* Mechanical click */
+@keyframes mechClick {
+  0% { transform: scale(1); }
+  40% { transform: scale(0.85); }
+  70% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.mech-click:active {
+  animation: mechClick 0.2s ease-out;
+}
+
+/* Dot glow */
+@keyframes dotGlow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.dot-glow {
+  animation: dotGlow 2s ease-in-out infinite;
+}
+
+/* Compact grid */
+[data-density="compact"] .grid-cell > div {
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
+}
+[data-density="compact"] .grid-cell button {
+  padding-top: 1px !important;
+  padding-bottom: 1px !important;
+}
+[data-density="compact"] .header-cell {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
+/* Glyph-style indicators - full block for checked */
+[data-glyph="glyphs"] .mech-click {
+  border-radius: 0 !important;
+}
+
+/* Dot shift animation */
+@keyframes dotShift {
+  0% { transform: translateX(0); opacity: 0.3; }
+  50% { transform: translateX(2px); opacity: 1; }
+  100% { transform: translateX(0); opacity: 0.3; }
+}
+
+.dot-shift {
+  animation: dotShift 1.5s ease-in-out infinite;
+}
+
+/* Nothing-style focus ring */
+*:focus-visible {
+  outline: 1px dashed rgba(255, 255, 255, 0.3);
+  outline-offset: 2px;
+}
+
+/* Scrollbar for dark themes */
+@media (prefers-color-scheme: dark) {
+  ::-webkit-scrollbar-thumb {
+    background: #444;
+  }
 }

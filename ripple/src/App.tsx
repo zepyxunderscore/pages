@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   BookOpen, Dumbbell, BrainCircuit, Code2, Droplets,
   PenLine, Moon, Heart, Coffee,
-  Settings, Sun, ChevronUp, ChevronDown, Plus, X, Trash2,
+  Settings, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Plus, X, Trash2,
   BarChart3, Grid3X3, Timer,
 } from 'lucide-react'
 import schemesData from '../schemes.json'
@@ -50,8 +50,9 @@ const ICON_MAP: Record<string, React.ComponentType<{ size?: number }>> = {
 
 const HABIT_ICONS = ['BookOpen', 'Dumbbell', 'BrainCircuit', 'Code2', 'Droplets', 'PenLine', 'Moon', 'Heart', 'Coffee']
 
-function getWeekDates() {
+function getWeekDates(offset = 0) {
   const now = new Date()
+  now.setDate(now.getDate() + offset * 7)
   const day = now.getDay()
   const diff = now.getDate() - day + (day === 0 ? -6 : 1)
   const monday = new Date(now.getFullYear(), now.getMonth(), diff)
@@ -71,12 +72,12 @@ function getMondayOfWeek(dateStr: string): Date {
 }
 
 function getBundleDayNumber(bundle: Bundle, date: Date): number | null {
-  const aligned = getMondayOfWeek(bundle.startDate)
+  const start = new Date(bundle.startDate + 'T00:00:00')
   const end = new Date(bundle.endDate + 'T00:00:00')
   const current = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-  const at = aligned.getTime(); const et = end.getTime(); const ct = current.getTime()
-  if (ct < at || ct > et) return null
-  return Math.round((ct - at) / (1000 * 60 * 60 * 24)) + 1
+  const st = start.getTime(); const et = end.getTime(); const ct = current.getTime()
+  if (ct < st || ct > et) return null
+  return Math.round((ct - st) / (1000 * 60 * 60 * 24)) + 1
 }
 
 function getPastDays(n: number): Date[] {
@@ -84,6 +85,42 @@ function getPastDays(n: number): Date[] {
   return Array.from({ length: n }, (_, i) => {
     const d = new Date(today); d.setDate(today.getDate() - (n - 1 - i)); return d
   })
+}
+
+function getYearGrid(year: number): (Date | null)[][] {
+  const jan1 = new Date(year, 0, 1)
+  const dec31 = new Date(year, 11, 31)
+  let cursor = new Date(jan1)
+  while (cursor.getDay() !== 1) cursor.setDate(cursor.getDate() - 1)
+  const weeks: (Date | null)[][] = []
+  while (cursor <= dec31 || cursor.getDay() !== 1) {
+    const week: (Date | null)[] = []
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(cursor); d.setDate(cursor.getDate() + i)
+      week.push(d >= jan1 && d <= dec31 ? d : null)
+    }
+    weeks.push(week)
+    cursor.setDate(cursor.getDate() + 7)
+  }
+  return weeks
+}
+
+function getPeriodGrid(startDate: string, endDate: string): (Date | null)[][] {
+  const start = new Date(startDate + 'T00:00:00')
+  const end = new Date(endDate + 'T00:00:00')
+  let cursor = new Date(start)
+  while (cursor.getDay() !== 1) cursor.setDate(cursor.getDate() - 1)
+  const weeks: (Date | null)[][] = []
+  while (cursor <= end || cursor.getDay() !== 1) {
+    const week: (Date | null)[] = []
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(cursor); d.setDate(cursor.getDate() + i)
+      week.push(d >= start && d <= end ? d : null)
+    }
+    weeks.push(week)
+    cursor.setDate(cursor.getDate() + 7)
+  }
+  return weeks
 }
 
 function loadFromStorage<T>(key: string, fallback: T): T {
@@ -126,7 +163,7 @@ export default function App() {
   const [schemeId, setSchemeId] = useState<string>(() => {
     const saved = loadFromStorage<string>('scheme', '')
     if (saved && schemes.some(s => s.id === saved)) return saved
-    return loadFromStorage<string>('theme', 'dark') === 'light' ? 'light' : 'dark'
+    return 'nothing'
   })
   const [authMode, setAuthMode] = useState<'github' | 'local' | null>(() =>
     loadFromStorage<'github' | 'local' | null>('authMode', null)
@@ -136,20 +173,27 @@ export default function App() {
   const [newName, setNewName] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
-  const [showIconPicker, setShowIconPicker] = useState<string | null>(null)
+  const [weekOffset, setWeekOffset] = useState(0)
+  const [iconPickerPos, setIconPickerPos] = useState<{ habitId: string; top: number; left: number } | null>(null)
   const [bundleForm, setBundleForm] = useState({ name: '', startDate: '', endDate: '' })
   const [ghConfig, setGhConfig] = useState<GhConfig | null>(() => loadFromStorage<GhConfig | null>('ghConfig', null))
   const [syncState, setSyncState] = useState<SyncState>('idle')
   const [syncLabel, setSyncLabel] = useState('Sync')
-  const [ghSha, setGhSha] = useState<string | null>(null)
+  const [ghSha, setGhSha] = useState<string | null>(() => loadFromStorage<string | null>('ghSha', null))
   const [ghForm, setGhForm] = useState<GhConfig>({ token: '', owner: '', repo: '', path: 'habit-data.json' })
   const [showGhForm, setShowGhForm] = useState(false)
   const [pomodoroSessions, setPomodoroSessions] = useState<PomodoroSession[]>(() =>
     loadFromStorage<PomodoroSession[]>('pomodoroSessions', [])
   )
+  const [density, setDensity] = useState<'compact' | 'comfortable'>(() =>
+    loadFromStorage<'compact' | 'comfortable'>('density', 'comfortable')
+  )
+  const [glyphStyle, setGlyphStyle] = useState<'dots' | 'glyphs' | 'minimal'>(() =>
+    loadFromStorage<'dots' | 'glyphs' | 'minimal'>('glyphStyle', 'dots')
+  )
 
   const scheme = schemes.find(s => s.id === schemeId) ?? schemes[0]
-  const weekDates = getWeekDates()
+  const weekDates = getWeekDates(weekOffset)
   const activeBundle = bundles.find(b => b.id === activeBundleId) ?? null
   const days = weekDates.map(d => ({
     ...d, bundleDay: activeBundle ? getBundleDayNumber(activeBundle, d.date) : null,
@@ -162,8 +206,33 @@ export default function App() {
   useEffect(() => { saveToStorage('ghConfig', ghConfig) }, [ghConfig])
   useEffect(() => { saveToStorage('authMode', authMode) }, [authMode])
   useEffect(() => { saveToStorage('pomodoroSessions', pomodoroSessions) }, [pomodoroSessions])
+  useEffect(() => { saveToStorage('ghSha', ghSha) }, [ghSha])
+  useEffect(() => { saveToStorage('density', density) }, [density])
+  useEffect(() => { saveToStorage('glyphStyle', glyphStyle) }, [glyphStyle])
 
   const sortedHabits = [...habits].sort((a, b) => a.order - b.order)
+
+  // Today's stats for sidebar
+  const todayKey = dateKey(new Date())
+  const todayDone = sortedHabits.filter(h => h.completedDates.includes(todayKey)).length
+  const bestStreak = (() => {
+    let max = 0
+    sortedHabits.forEach(h => {
+      let streak = 0; const d = new Date(); d.setHours(0, 0, 0, 0)
+      for (let i = 0; i < 365; i++) {
+        if (!h.completedDates.includes(dateKey(d))) break
+        streak++; d.setDate(d.getDate() - 1)
+      }
+      if (streak > max) max = streak
+    })
+    return max
+  })()
+  const weekKeys = getWeekDates().map(d => d.key)
+  const weekTotal = sortedHabits.length * 7
+  const weekDoneTotal = sortedHabits.reduce((sum, h) =>
+    sum + weekKeys.filter(k => h.completedDates.includes(k)).length, 0
+  )
+  const weekPct = weekTotal > 0 ? Math.round(weekDoneTotal / weekTotal * 100) : 0
 
   const addHabit = useCallback(() => {
     const name = newName.trim(); if (!name) return
@@ -200,7 +269,7 @@ export default function App() {
 
   const setIcon = useCallback((id: string, icon: string) => {
     setHabits(prev => prev.map(h => h.id === id ? { ...h, icon } : h))
-    setShowIconPicker(null)
+    setIconPickerPos(null)
   }, [])
 
   const startEdit = useCallback((id: string, name: string) => {
@@ -336,17 +405,17 @@ export default function App() {
 
   if (!authMode) {
     return (
-      <div className="min-h-screen antialiased" style={{ backgroundColor: s.bg, color: s.fg, fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div className="min-h-screen antialiased" style={{ backgroundColor: s.bg, color: s.fg, fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
         <div className="min-h-screen flex items-center justify-center px-4">
           <div className="w-full max-w-sm">
             <div className="text-center mb-10">
-              <h1 className="text-2xl font-bold tracking-widest uppercase" style={{ color: s.fgHeader }}>ripple</h1>
+              <h1 className="text-3xl font-bold tracking-widest uppercase" style={{ color: s.fgHeader, fontFamily: "'Space Mono', monospace" }}>ripple</h1>
               <p className="text-xs mt-2" style={{ color: s.fgMuted }}>habit tracker</p>
             </div>
             <div className="space-y-3">
               <button onClick={() => setAuthMode('local')}
                 className="w-full py-3 rounded-sm text-xs font-medium uppercase tracking-wider transition-colors"
-                style={{ backgroundColor: s.accent, color: '#ffffff' }}>
+                style={{ backgroundColor: s.accent, color: s.bg }}>
                 continue locally
               </button>
               <button onClick={() => setShowGhForm(true)}
@@ -383,7 +452,7 @@ export default function App() {
                 <button onClick={connectGitHub}
                   disabled={!ghForm.token.trim() || !ghForm.owner.trim() || !ghForm.repo.trim()}
                   className="w-full py-3 rounded-sm text-xs font-medium uppercase tracking-wider transition-colors disabled:opacity-30"
-                  style={{ backgroundColor: s.accent, color: '#ffffff' }}>
+                  style={{ backgroundColor: s.accent, color: s.bg }}>
                   connect & enter
                 </button>
                 <button onClick={() => setShowGhForm(false)}
@@ -400,46 +469,82 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen antialiased" style={{ backgroundColor: s.bg, color: s.fg, fontFamily: 'Inter, system-ui, sans-serif' }}>
-      <div className="max-w-3xl mx-auto px-4 py-8">
+    <div className="min-h-screen antialiased flex" style={{ backgroundColor: s.bg, color: s.fg, fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>
+      <aside className="hidden lg:flex lg:flex-col w-72 shrink-0 min-h-screen py-8 px-5"
+        style={{ borderRight: `1px solid ${s.border}`, backgroundColor: s.bgCard }}>
+        <div className="mb-auto">
+          <div className="px-3 py-2.5" style={{ border: `1px solid ${s.border}` }}>
+            <div className="text-lg font-bold tabular-nums" style={{ color: s.fg, fontFamily: "'Space Mono', monospace" }}>{todayDone}/{sortedHabits.length}</div>
+            <div className="text-[10px] mt-0.5 tracking-wider uppercase" style={{ color: s.fgMuted }}>today done</div>
+          </div>
+          <div className="px-3 py-2.5" style={{ border: `1px solid ${s.border}` }}>
+            <div className="text-lg font-bold tabular-nums" style={{ color: s.fg, fontFamily: "'Space Mono', monospace" }}>{bestStreak}d</div>
+            <div className="text-[10px] mt-0.5 tracking-wider uppercase" style={{ color: s.fgMuted }}>best streak</div>
+          </div>
+          <div className="px-3 py-2.5" style={{ border: `1px solid ${s.border}` }}>
+            <div className="text-lg font-bold tabular-nums" style={{ color: s.fg, fontFamily: "'Space Mono', monospace" }}>{weekPct}%</div>
+            <div className="text-[10px] mt-0.5 tracking-wider uppercase" style={{ color: s.fgMuted }}>this week</div>
+          </div>
+        </div>
+        <div className="mt-auto pt-8">
+          <div className="flex flex-col gap-1">
+            {schemes.map(sc => (
+              <button key={sc.id} onClick={() => setSchemeId(sc.id)}
+                className="w-full text-left px-3 py-2 text-[10px] uppercase tracking-wider transition-colors"
+                style={{
+                  backgroundColor: sc.id === schemeId ? s.bgHover : 'transparent',
+                  color: sc.id === schemeId ? s.fg : s.fgMuted,
+                }}
+                onMouseEnter={e => { if (sc.id !== schemeId) e.currentTarget.style.backgroundColor = s.bgHover }}
+                onMouseLeave={e => { if (sc.id !== schemeId) e.currentTarget.style.backgroundColor = 'transparent' }}>
+                {sc.name}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center justify-center pt-8 pb-2">
+          <span className="w-[3px] h-[3px] dot-glow" style={{ backgroundColor: s.fgMuted }} />
+        </div>
+      </aside>
+      <main className="flex-1 min-w-0 px-4 lg:px-8 py-8" data-glyph={glyphStyle}>
 
         {/* Header */}
-        <header className="flex items-center justify-between mb-6 select-none" style={{ borderBottom: `1px solid ${s.border}`, paddingBottom: 14 }}>
+        <header className="flex items-center justify-between mb-6" style={{ borderBottom: `1px solid ${s.border}`, paddingBottom: 14 }}>
           <div className="flex items-center gap-3">
             <div>
-              <h1 className="text-sm font-semibold tracking-wider uppercase" style={{ color: activeBundle ? s.accent : s.fgHeader }}>
+              <h1 className="text-xs font-semibold tracking-[0.15em] uppercase" style={{ color: activeBundle ? s.accent : s.fgHeader, fontFamily: "'Space Mono', monospace" }}>
                 {activeBundle ? activeBundle.name : 'ripple'}
               </h1>
-              <p className="text-xs mt-0.5" style={{ color: s.fgMuted }}>
+              <p className="text-[10px]" style={{ color: s.fgMuted }}>
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
               </p>
             </div>
-            <div className="flex items-center gap-1 ml-2" style={{ borderLeft: `1px solid ${s.border}`, paddingLeft: 10 }}>
+            <div className="flex items-center gap-px ml-2" style={{ border: `1px solid ${s.border}` }}>
               <button onClick={() => setPage('habits')}
-                className="px-2.5 py-1.5 rounded-sm text-[10px] font-medium tracking-wider uppercase transition-colors"
+                className="px-2.5 py-1 text-[10px] font-medium tracking-wider uppercase transition-colors"
                 style={{
                   backgroundColor: page === 'habits' ? s.bgHover : 'transparent',
                   color: page === 'habits' ? s.fg : s.fgMuted,
                 }}>
-                <Grid3X3 size={11} className="inline mr-1" style={{ verticalAlign: -2 }} />
+                <Grid3X3 size={10} className="inline mr-1" style={{ verticalAlign: -2 }} />
                 habits
               </button>
               <button onClick={() => setPage('analytics')}
-                className="px-2.5 py-1.5 rounded-sm text-[10px] font-medium tracking-wider uppercase transition-colors"
+                className="px-2.5 py-1 text-[10px] font-medium tracking-wider uppercase transition-colors"
                 style={{
                   backgroundColor: page === 'analytics' ? s.bgHover : 'transparent',
                   color: page === 'analytics' ? s.fg : s.fgMuted,
                 }}>
-                <BarChart3 size={11} className="inline mr-1" style={{ verticalAlign: -2 }} />
+                <BarChart3 size={10} className="inline mr-1" style={{ verticalAlign: -2 }} />
                 analytics
               </button>
               <button onClick={() => setPage('pomodoro')}
-                className="px-2.5 py-1.5 rounded-sm text-[10px] font-medium tracking-wider uppercase transition-colors"
+                className="px-2.5 py-1 text-[10px] font-medium tracking-wider uppercase transition-colors"
                 style={{
                   backgroundColor: page === 'pomodoro' ? s.bgHover : 'transparent',
                   color: page === 'pomodoro' ? s.fg : s.fgMuted,
                 }}>
-                <Timer size={11} className="inline mr-1" style={{ verticalAlign: -2 }} />
+                <Timer size={10} className="inline mr-1" style={{ verticalAlign: -2 }} />
                 pomodoro
               </button>
             </div>
@@ -456,11 +561,11 @@ export default function App() {
             )}
             {authMode === 'github' && ghConfig && page === 'habits' && (
               <button onClick={syncToGitHub}
-                className="flex items-center gap-1 text-[10px] mr-1 px-2 py-1 rounded-sm uppercase tracking-wider transition-colors"
-                style={{ color: syncState === 'ok' ? s.accent : syncState === 'err' ? '#ef4444' : s.fgMuted, border: `1px solid ${syncState === 'ok' ? s.accent : syncState === 'err' ? '#ef4444' : s.border}` }}>
-                <span style={{
-                  width: 6, height: 6, borderRadius: '50%', display: 'inline-block',
-                  backgroundColor: syncState === 'ok' ? s.accent : syncState === 'busy' ? '#f59e0b' : syncState === 'err' ? '#ef4444' : s.fgMuted,
+                className="flex items-center gap-1 text-[10px] mr-1 px-2 py-1 uppercase tracking-wider transition-colors"
+                style={{ color: syncState === 'ok' ? s.accent : syncState === 'err' ? s.fg : s.fgMuted, border: `1px solid ${syncState === 'ok' ? s.accent : syncState === 'err' ? s.fg : s.border}` }}>
+                <span className="dot-glow" style={{
+                  width: 6, height: 6, display: 'inline-block',
+                  backgroundColor: syncState === 'ok' ? s.accent : syncState === 'busy' ? s.fgMuted : syncState === 'err' ? s.fg : s.fgMuted,
                 }} />
                 {syncLabel}
               </button>
@@ -472,17 +577,10 @@ export default function App() {
               aria-label="Settings">
               <Settings size={15} />
             </button>
-            <button onClick={() => setSchemeId(sid => sid === 'light' ? 'dark' : 'light')}
-              className="p-2 rounded transition-colors" style={{ color: s.fgMuted }}
-              onMouseEnter={e => e.currentTarget.style.color = s.fg}
-              onMouseLeave={e => e.currentTarget.style.color = s.fgMuted}
-              aria-label="Toggle light/dark">
-              <Sun size={15} />
-            </button>
             <button onClick={signOut}
-              className="text-[10px] px-2 py-1 rounded-sm uppercase tracking-wider transition-colors ml-1"
+              className="text-[10px] px-2 py-1 uppercase tracking-wider transition-colors ml-1"
               style={{ color: s.fgMuted, border: `1px solid ${s.border}` }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = '#ef4444' }}
+              onMouseEnter={e => { e.currentTarget.style.color = s.fg; e.currentTarget.style.borderColor = s.fg }}
               onMouseLeave={e => { e.currentTarget.style.color = s.fgMuted; e.currentTarget.style.borderColor = s.border }}>
               logout
             </button>
@@ -500,12 +598,42 @@ export default function App() {
           </div>
         )}
 
+        {/* Week navigation */}
+        {page === 'habits' && (
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[10px]" style={{ color: s.fgMuted }}>
+              {fmtDMY(days[0].key)} – {fmtDMY(days[6].key)}
+            </div>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setWeekOffset(prev => prev - 1)}
+                className="p-1 rounded transition-colors" style={{ color: s.fgMuted }}
+                onMouseEnter={e => e.currentTarget.style.color = s.fg}
+                onMouseLeave={e => e.currentTarget.style.color = s.fgMuted}>
+                <ChevronLeft size={14} />
+              </button>
+              <button onClick={() => setWeekOffset(0)}
+                className="text-[10px] px-2 py-1 rounded-sm uppercase tracking-wider transition-colors"
+                style={{ color: weekOffset === 0 ? s.accent : s.fgMuted, border: `1px solid ${weekOffset === 0 ? s.accent : s.border}` }}
+                onMouseEnter={e => { if (weekOffset !== 0) { e.currentTarget.style.color = s.fg; e.currentTarget.style.borderColor = s.borderHover } }}
+                onMouseLeave={e => { if (weekOffset !== 0) { e.currentTarget.style.color = s.fgMuted; e.currentTarget.style.borderColor = s.border } }}>
+                today
+              </button>
+              <button onClick={() => setWeekOffset(prev => prev + 1)}
+                className="p-1 rounded transition-colors" style={{ color: s.fgMuted }}
+                onMouseEnter={e => e.currentTarget.style.color = s.fg}
+                onMouseLeave={e => e.currentTarget.style.color = s.fgMuted}>
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* === HABITS PAGE === */}
         {page === 'habits' && (
           <>
             {sortedHabits.length > 0 ? (
               <div className="w-full overflow-x-auto" style={{ paddingRight: 4 }}>
-                <div style={{
+                <div data-density={density} style={{
                   display: 'grid',
                   gridTemplateColumns: `1fr 56px 120px repeat(7, 36px) 48px`,
                   border: `1px solid ${s.border}`,
@@ -539,31 +667,19 @@ export default function App() {
                         <Cell idx={idx} total={sortedHabits.length} s={s}>
                             <div className="flex items-center gap-2 px-3 py-2 min-w-0 cursor-pointer"
                             onClick={() => !isEditing && startEdit(habit.id, habit.name)}>
-                            <div className="relative shrink-0">
+                            <div className="shrink-0">
                               <button
-                                onClick={e => { e.stopPropagation(); setShowIconPicker(showIconPicker === habit.id ? null : habit.id) }}
+                                onClick={e => {
+                                  e.stopPropagation()
+                                  const rect = e.currentTarget.getBoundingClientRect()
+                                  setIconPickerPos(iconPickerPos?.habitId === habit.id ? null : {
+                                    habitId: habit.id, top: rect.bottom + 4, left: rect.left,
+                                  })
+                                }}
                                 className="p-0.5 rounded transition-colors hover:opacity-80"
                                 style={{ color: s.fgMuted }}>
                                 <Icon size={14} />
                               </button>
-                              {showIconPicker === habit.id && (
-                                <div className="absolute top-full left-0 mt-1 z-30 p-2 rounded-sm shadow-lg"
-                                  style={{ backgroundColor: s.bgCard, border: `1px solid ${s.border}` }}
-                                  onClick={e => e.stopPropagation()}>
-                                  <div className="grid grid-cols-5 gap-1">
-                                    {HABIT_ICONS.map(ic => {
-                                      const Ico = ICON_MAP[ic] || BookOpen
-                                      return (
-                                        <button key={ic} onClick={() => setIcon(habit.id, ic)}
-                                          className="p-1.5 rounded transition-colors"
-                                          style={{ backgroundColor: habit.icon === ic ? s.bgHover : 'transparent', color: s.fgMuted }}>
-                                          <Ico size={13} />
-                                        </button>
-                                      )
-                                    })}
-                                  </div>
-                                </div>
-                              )}
                             </div>
                             {isEditing ? (
                               <input autoFocus
@@ -598,10 +714,15 @@ export default function App() {
                         </Cell>
 
                         <Cell idx={idx} total={sortedHabits.length} s={s}>
-                          <div className="flex items-center gap-2 px-2 py-2">
-                            <div className="flex-1 h-2 rounded-sm overflow-hidden" style={{ backgroundColor: s.border }}>
-                              <div className="h-full rounded-sm transition-all duration-300"
-                                style={{ width: `${progress * 100}%`, backgroundColor: s.accent }} />
+                          <div className="flex items-center gap-1.5 px-2 py-2">
+                            <div className="flex items-center gap-[2px]">
+                              {Array.from({ length: habit.goal }, (_, gi) => (
+                                <span key={gi} style={{
+                                  width: 5, height: 5,
+                                  backgroundColor: gi < weeklyCount ? s.accent : s.border,
+                                  transition: 'background-color 0.15s',
+                                }} />
+                              ))}
                             </div>
                             <span className="text-[10px] tabular-nums shrink-0" style={{ color: s.fgMuted }}>
                               {weeklyCount}/{habit.goal}
@@ -616,13 +737,15 @@ export default function App() {
                             <Cell key={d.key} idx={idx} total={sortedHabits.length} s={s}>
                               <div className="flex items-center justify-center py-2">
                                 <button onClick={() => inRange && toggleDate(habit.id, d.key)}
-                                  className="w-4 h-4 rounded-sm transition-all duration-150"
+                                  className="w-4 h-4 mech-click transition-all duration-100"
                                   style={{
                                     backgroundColor: checked ? s.accent : 'transparent',
                                     border: `1.5px solid ${checked ? s.accent : inRange ? s.borderHover : 'transparent'}`,
                                     opacity: inRange ? 1 : 0.15,
                                     cursor: inRange ? 'pointer' : 'default',
                                   }}
+                                  onMouseEnter={e => { if (inRange && !checked) e.currentTarget.style.borderColor = s.fg }}
+                                  onMouseLeave={e => { if (inRange && !checked) e.currentTarget.style.borderColor = s.borderHover }}
                                   aria-label={checked ? 'Unmark' : 'Mark complete'}
                                 />
                               </div>
@@ -673,7 +796,7 @@ export default function App() {
                   </button>
                   <button onClick={addHabit}
                     className="px-3 py-1 rounded-sm text-xs font-medium transition-colors"
-                    style={{ backgroundColor: s.accent, color: '#ffffff' }}>
+                    style={{ backgroundColor: s.accent, color: s.bg }}>
                     add
                   </button>
                 </div>
@@ -688,11 +811,11 @@ export default function App() {
 
         {/* Footer */}
         <p className="mt-8 text-center text-[10px]" style={{ color: s.fgMuted }}>saved automatically</p>
-      </div>
+      </main>
 
       {/* Sidebar overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40" style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
+        <div className="fixed inset-0 z-40" style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}
           onClick={() => setSidebarOpen(false)} />
       )}
 
@@ -731,12 +854,21 @@ export default function App() {
             </div>
           </section>
 
+          {/* Display */}
+          <section className="mb-8">
+            <h3 className="text-[10px] font-semibold tracking-widest uppercase mb-3" style={{ color: s.fgHeader }}>display</h3>
+            <div className="space-y-1.5">
+              <GlyphToggle on={density === 'compact'} onChange={v => setDensity(v ? 'compact' : 'comfortable')} s={s} label="Compact mode" />
+              <GlyphToggle on={glyphStyle === 'glyphs'} onChange={v => setGlyphStyle(v ? 'glyphs' : 'dots')} s={s} label="Glyph indicators" />
+            </div>
+          </section>
+
           {/* Sign out */}
           <section className="mb-8">
             <button onClick={signOut}
-              className="w-full text-left px-3 py-2.5 rounded-sm text-xs transition-colors flex items-center gap-2.5"
+              className="w-full text-left px-3 py-2.5 text-xs transition-colors flex items-center gap-2.5"
               style={{ color: s.fgMuted, border: `1px solid ${s.borderHover}` }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = '#ef4444' }}
+              onMouseEnter={e => { e.currentTarget.style.color = s.fg; e.currentTarget.style.borderColor = s.fg }}
               onMouseLeave={e => { e.currentTarget.style.color = s.fgMuted; e.currentTarget.style.borderColor = s.borderHover }}>
               sign out
             </button>
@@ -813,7 +945,7 @@ export default function App() {
               <button onClick={createBundle}
                 disabled={!bundleForm.name.trim() || !bundleForm.startDate || !bundleForm.endDate || bundleTotalDays <= 0}
                 className="w-full py-2 rounded-sm text-xs font-medium transition-colors disabled:opacity-30"
-                style={{ backgroundColor: s.accent, color: '#ffffff' }}>
+                style={{ backgroundColor: s.accent, color: s.bg }}>
                 create bundle
               </button>
             </div>
@@ -851,16 +983,16 @@ export default function App() {
                   <button onClick={connectGitHub}
                     disabled={!ghForm.token.trim() || !ghForm.owner.trim() || !ghForm.repo.trim()}
                     className="w-full py-2 rounded-sm text-xs font-medium transition-colors disabled:opacity-30"
-                    style={{ backgroundColor: s.accent, color: '#ffffff' }}>
+                    style={{ backgroundColor: s.accent, color: s.bg }}>
                     connect & sync
                   </button>
                 </div>
               ) : (
                 <div className="space-y-2.5">
-                  <div className="px-3 py-2 rounded-sm text-xs flex items-center gap-2" style={{ border: `1px solid ${s.border}`, backgroundColor: s.bg }}>
-                    <span style={{
-                      width: 7, height: 7, borderRadius: '50%', display: 'inline-block',
-                      backgroundColor: syncState === 'ok' ? s.accent : syncState === 'busy' ? '#f59e0b' : syncState === 'err' ? '#ef4444' : s.fgMuted,
+                  <div className="px-3 py-2 text-xs flex items-center gap-2" style={{ border: `1px solid ${s.border}`, backgroundColor: s.bg }}>
+                    <span className="dot-glow" style={{
+                      width: 7, height: 7, display: 'inline-block',
+                      backgroundColor: syncState === 'ok' ? s.accent : syncState === 'busy' ? s.fgMuted : syncState === 'err' ? s.fg : s.fgMuted,
                     }} />
                     <span className="truncate" style={{ color: s.fg, maxWidth: 30 }}>{ghConfig.owner}/{ghConfig.repo}</span>
                     <span className="text-[10px] truncate shrink-0" style={{ color: s.fgMuted }}>
@@ -874,8 +1006,8 @@ export default function App() {
                       sync now
                     </button>
                     <button onClick={disconnectGitHub}
-                      className="py-1.5 px-3 rounded-sm text-xs font-medium transition-colors"
-                      style={{ color: '#ef4444', border: `1px solid ${s.border}` }}>
+                      className="py-1.5 px-3 text-xs font-medium transition-colors"
+                      style={{ color: s.fgMuted, border: `1px solid ${s.border}` }}>
                       disconnect
                     </button>
                   </div>
@@ -889,6 +1021,71 @@ export default function App() {
           </p>
         </div>
       </aside>
+
+      {/* Icon picker overlay */}
+      {iconPickerPos && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setIconPickerPos(null)} />
+          <div className="fixed z-50 p-2"
+            style={{
+              top: iconPickerPos.top, left: iconPickerPos.left,
+              backgroundColor: s.bgCard, border: `1px solid ${s.border}`,
+            }}
+            onClick={e => e.stopPropagation()}>
+            <div className="grid grid-cols-5 gap-1">
+              {HABIT_ICONS.map(ic => {
+                const Ico = ICON_MAP[ic] || BookOpen
+                const h = habits.find(x => x.id === iconPickerPos.habitId)
+                return (
+                  <button key={ic} onClick={() => setIcon(iconPickerPos.habitId, ic)}
+                    className="p-1.5 rounded transition-colors"
+                    style={{ backgroundColor: h?.icon === ic ? s.bgHover : 'transparent', color: s.fgMuted }}>
+                    <Ico size={13} />
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function GlyphToggle({ on, onChange, s, label, id }: {
+  on: boolean; onChange: (v: boolean) => void; s: Scheme; label: string; id?: string
+}) {
+  return (
+    <button id={id} onClick={() => onChange(!on)}
+      className="flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-sm text-xs transition-colors cursor-pointer"
+      style={{ backgroundColor: s.bg, border: `1px solid ${s.border}` }}>
+      <div className="flex items-center gap-[2px]">
+        {Array.from({ length: 5 }, (_, i) => (
+          <span key={i} style={{
+            width: 4, height: 4,
+            backgroundColor: on ? (i < 3 ? s.accent : s.border) : s.border,
+            transition: 'background-color 0.2s',
+          }} />
+        ))}
+      </div>
+      <span style={{ color: on ? s.fg : s.fgMuted }}>{label}</span>
+    </button>
+  )
+}
+
+function DotMeter({ value, max, s, className = '' }: {
+  value: number; max: number; s: Scheme; className?: string
+}) {
+  const dots = Math.min(Math.round(value), max)
+  return (
+    <div className={`flex items-center gap-[2px] ${className}`}>
+      {Array.from({ length: max }, (_, i) => (
+        <span key={i} style={{
+          width: 4, height: 4,
+          backgroundColor: i < dots ? s.accent : s.border,
+          transition: 'background-color 0.15s',
+        }} />
+      ))}
     </div>
   )
 }
@@ -898,8 +1095,8 @@ function Cell({ idx, total, s, children }: {
 }) {
   const [hover, setHover] = useState(false)
   return (
-    <div style={{
-      backgroundColor: hover ? s.bgHover : (idx % 2 === 0 ? 'transparent' : s.bgCard),
+    <div className="grid-cell" style={{
+      backgroundColor: hover ? s.bgHover : 'transparent',
       borderBottom: idx < total - 1 ? `1px solid ${s.border}` : 'none',
       transition: 'background-color 100ms',
     }}
@@ -914,7 +1111,7 @@ function HeaderCell({ scheme: s, className = '', children }: {
   scheme: Scheme; className?: string; children: React.ReactNode
 }) {
   return (
-    <div className={`px-2 py-1.5 text-[10px] font-semibold tracking-wider uppercase leading-tight ${className}`}
+    <div className={`header-cell px-2 py-1.5 text-[10px] font-semibold tracking-wider uppercase leading-tight ${className}`}
       style={{ color: s.fgHeader, backgroundColor: s.bg, borderBottom: `1px solid ${s.border}` }}>
       {children}
     </div>
@@ -945,26 +1142,18 @@ function AnalyticsPage({ habits, scheme: s, activeBundle }: { habits: Habit[]; s
   const weekKeys = getWeekDates().map(d => d.key)
   const weekDone = habits.filter(h => h.completedDates.some(d => weekKeys.includes(d))).length
 
-  // Heatmap
-  const heatmapCols: { date: Date; level: number }[][] = []
-  let currentCol: { date: Date; level: number }[] = []
-  past30.forEach((d, i) => {
-    const iso = d.getDay() === 0 ? 6 : d.getDay() - 1
-    currentCol.push({ date: d, level: calcHeatLevel(d, habits) })
-    if (iso === 6 || i === past30.length - 1) {
-      while (currentCol.length < 7) currentCol.unshift({ date: currentCol[0].date, level: -1 })
-      heatmapCols.push(currentCol)
-      currentCol = []
-    }
-  })
+  // Grid heatmap
+  const grid = activeBundle
+    ? getPeriodGrid(activeBundle.startDate, activeBundle.endDate)
+    : getYearGrid(today.getFullYear())
 
-  const monthLabels: { month: string; col: number }[] = []
-  heatmapCols.forEach((col, ci) => {
-    const first = col.find(d => d.level >= 0)
+  const gridMonthLabels: { month: string; col: number }[] = []
+  grid.forEach((week, ci) => {
+    const first = week.find(d => d !== null)
     if (first) {
-      const m = first.date.getMonth()
-      if (ci === 0 || (heatmapCols[ci - 1].find(d => d.level >= 0)?.date.getMonth() !== m)) {
-        monthLabels.push({ month: MONTHS_SHORT[m], col: ci })
+      const m = first.getMonth()
+      if (ci === 0 || (grid[ci - 1].find(d => d !== null)?.getMonth() !== m)) {
+        gridMonthLabels.push({ month: MONTHS_SHORT[m], col: ci })
       }
     }
   })
@@ -992,100 +1181,69 @@ function AnalyticsPage({ habits, scheme: s, activeBundle }: { habits: Habit[]; s
         <StatCard s={s} label="Total Habits" value={`${habits.length}`} />
       </div>
 
-      {/* Heatmap */}
+      {/* Heatmap grid */}
       {habits.length > 0 && (
         <div className="mb-6 p-4 rounded-sm" style={{ border: `1px solid ${s.border}`, backgroundColor: s.bgCard }}>
-           <h3 className="text-[10px] font-semibold tracking-wider uppercase mb-3" style={{ color: s.fgHeader }}>
-             {activeBundle ? '30-Day Heatmap (Bundle Days)' : '30-Day Activity Heatmap'}
-           </h3>
-            <div className="overflow-x-auto">
-             <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 2 }}>
-               {activeBundle ? (
-                 <>
-                   {Array.from({ length: 5 }, (_, row) => (
-                     <div key={row} style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                       {past30.slice((4 - row) * 6, (4 - row) * 6 + 6).map((d, ci) => {
-                         const level = calcHeatLevel(d, habits)
-                         const bd = getBundleDayNumber(activeBundle, d)
-                         return (
-                           <div key={ci}
-                             title={bd ? `D${bd}: ${level}` : `—: ${level}`}
-                             style={{
-                               width: 12, height: 12, borderRadius: 2,
-                               backgroundColor: level === 0 ? s.bg :
-                                 level === 1 ? s.accentDim :
-                                 level === 2 ? '#166534' :
-                                 level === 3 ? '#15803d' :
-                                 s.accent,
-                               opacity: 0.85,
-                               transition: 'transform 0.1s',
-                               cursor: 'default',
-                             }}
-                             onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.35)'}
-                             onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                           />
-                         )
-                       })}
-                     </div>
-                   ))}
-                 </>
-               ) : (
-                 <>
-                   <div style={{ display: 'flex', gap: 3, height: 14, marginLeft: 26 }}>
-                     {heatmapCols.map((_, ci) => {
-                       const ml = monthLabels.find(m => m.col === ci)
-                       return (
-                         <div key={ci} style={{ width: 12, fontSize: 8, color: s.fgMuted, lineHeight: '14px' }}>
-                           {ml ? ml.month : ''}
-                         </div>
-                       )
-                     })}
-                   </div>
-                   {Array.from({ length: 7 }, (_, row) => (
-                     <div key={row} style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                       <span style={{ width: 24, fontSize: 8, color: s.fgMuted, textAlign: 'right', paddingRight: 3 }}>
-                         {weekLabels[row]}
-                       </span>
-                       {heatmapCols.map((col, ci) => {
-                         const cell = col[row]
-                         const level = cell ? cell.level : -1
-                         return (
-                           <div key={ci}
-                             title={cell?.date ? `${fmtDateShort(cell.date)}: ${level < 0 ? 'N/A' : level}` : ''}
-                             style={{
-                               width: 12, height: 12, borderRadius: 2,
-                               backgroundColor: level < 0 ? 'transparent' :
-                                 level === 0 ? s.bg :
-                                 level === 1 ? s.accentDim :
-                                 level === 2 ? '#166534' :
-                                 level === 3 ? '#15803d' :
-                                 s.accent,
-                               opacity: level < 0 ? 0 : 0.85,
-                               transition: 'transform 0.1s',
-                               cursor: 'default',
-                             }}
-                             onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.35)'}
-                             onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                           />
-                         )
-                       })}
-                     </div>
-                   ))}
-                 </>
-               )}
-               <div className="flex items-center gap-1.5 mt-2" style={{ fontSize: 8, color: s.fgMuted }}>
-                 <span>Less</span>
-                 {[0, 1, 2, 3, 4].map(l => (
-                   <div key={l} style={{
-                     width: 10, height: 10, borderRadius: 2,
-                     backgroundColor: l === 0 ? s.bg : l === 1 ? s.accentDim : l === 2 ? '#166534' : l === 3 ? '#15803d' : s.accent,
-                     opacity: 0.85,
-                   }} />
-                 ))}
-                 <span>More</span>
-               </div>
-             </div>
-           </div>
+          <h3 className="text-[10px] font-semibold tracking-wider uppercase mb-3" style={{ color: s.fgHeader }}>
+            {activeBundle
+              ? `Bundle Activity · ${fmtDMY(activeBundle.startDate)} – ${fmtDMY(activeBundle.endDate)}`
+              : `${today.getFullYear()} Activity`}
+          </h3>
+          <div className="overflow-x-auto">
+            <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 2 }}>
+              <div style={{ display: 'flex', gap: 3, height: 14, marginLeft: 26 }}>
+                {grid.map((_, ci) => {
+                  const ml = gridMonthLabels.find(m => m.col === ci)
+                  return (
+                    <div key={ci} style={{ width: 12, fontSize: 8, color: s.fgMuted, lineHeight: '14px' }}>
+                      {ml ? ml.month : ''}
+                    </div>
+                  )
+                })}
+              </div>
+              {Array.from({ length: 7 }, (_, row) => (
+                <div key={row} style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                  <span style={{ width: 24, fontSize: 8, color: s.fgMuted, textAlign: 'right', paddingRight: 3 }}>
+                    {weekLabels[row]}
+                  </span>
+                  {grid.map((week, ci) => {
+                    const d = week[row]
+                    const level = d ? calcHeatLevel(d, habits) : -1
+                    return (
+                      <div key={ci}
+                        title={d ? `${fmtDateShort(d)}: ${level < 0 ? 'N/A' : level}` : ''}
+                        style={{
+                          width: 12, height: 12,
+                          backgroundColor: level < 0 ? 'transparent' :
+                            level === 0 ? s.bg :
+                            level === 1 ? s.accentDim :
+                            level === 2 ? s.borderHover :
+                            level === 3 ? s.accentBg :
+                            s.accent,
+                          opacity: level < 0 ? 0 : 0.85,
+                          transition: 'transform 0.1s',
+                          cursor: 'default',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.35)'}
+                        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                      />
+                    )
+                  })}
+                </div>
+              ))}
+              <div className="flex items-center gap-1.5 mt-2" style={{ fontSize: 8, color: s.fgMuted }}>
+                <span>Less</span>
+                {[0, 1, 2, 3, 4].map(l => (
+                  <div key={l} style={{
+                    width: 10, height: 10, borderRadius: 0,
+                    backgroundColor: l === 0 ? s.bg : l === 1 ? s.accentDim : l === 2 ? s.borderHover : l === 3 ? s.accentBg : s.accent,
+                    opacity: 0.85,
+                  }} />
+                ))}
+                <span>More</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1101,10 +1259,10 @@ function AnalyticsPage({ habits, scheme: s, activeBundle }: { habits: Habit[]; s
               <div key={i} className="flex flex-col items-center gap-1" style={{ flex: 1, height: '100%', justifyContent: 'flex-end' }}>
                 <span className="text-[10px] font-semibold tabular-nums" style={{ color: s.fgHeader }}>{dowPcts[i]}%</span>
                 <div style={{
-                  width: '100%', borderRadius: '2px 2px 0 0',
+                  width: '100%',
                   height: `${Math.max(3, Math.round(dowPcts[i] / maxDow * 50))}px`,
                   backgroundColor: s.accent,
-                  opacity: 0.3 + 0.7 * (dowPcts[i] / maxDow),
+                  opacity: dowPcts[i] > 0 ? 1 : 0.1,
                 }} />
                 <span className="text-[10px]" style={{ color: s.fgMuted }}>{l}</span>
               </div>
@@ -1158,17 +1316,19 @@ function AnalyticsPage({ habits, scheme: s, activeBundle }: { habits: Habit[]; s
                         </span>
                       </td>
                       <td className="py-2.5 pl-3">
-                        <div className="flex items-center gap-2">
-                          <div className="h-2 rounded-sm overflow-hidden" style={{ width: 50, backgroundColor: s.border }}>
-                            <div className="h-full rounded-sm" style={{
-                              width: `${rate30}%`,
-                              backgroundColor: rate30 >= 80 ? s.accent : rate30 >= 50 ? s.fgHeader : s.fgMuted,
-                            }} />
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-[2px]">
+                              {Array.from({ length: 10 }, (_, gi) => (
+                                <span key={gi} style={{
+                                  width: 4, height: 4,
+                                  backgroundColor: gi < Math.round(rate30 / 10) ? s.accent : s.border,
+                                }} />
+                              ))}
+                            </div>
+                            <span className="text-[10px] font-semibold tabular-nums" style={{ color: s.fgHeader }}>
+                              {rate30}%
+                            </span>
                           </div>
-                          <span className="text-[10px] font-semibold tabular-nums" style={{ color: s.fgHeader }}>
-                            {rate30}%
-                          </span>
-                        </div>
                       </td>
                     </tr>
                   )
@@ -1235,7 +1395,7 @@ function PomodoroPage({ habits, scheme: s, sessions, onSession }: {
   return (
     <div>
       <div className="p-4 rounded-sm mb-6 text-center" style={{ border: `1px solid ${s.border}`, backgroundColor: s.bgCard }}>
-        <div className="text-5xl font-bold tabular-nums mb-4" style={{ color: s.fg }}>{mm}:{ss}</div>
+        <div className="text-5xl font-bold mb-4" style={{ color: s.fg, fontFamily: "'Space Mono', monospace", letterSpacing: '-0.04em' }}>{mm}:{ss}</div>
         <div className="flex items-center justify-center gap-2 mb-4 text-xs" style={{ color: s.fgMuted }}>
           <button onClick={() => changeDuration(-5)} className="p-1 rounded transition-colors" style={{ color: s.fgMuted }}>
             <ChevronDown size={12} />
@@ -1245,26 +1405,38 @@ function PomodoroPage({ habits, scheme: s, sessions, onSession }: {
             <ChevronUp size={12} />
           </button>
         </div>
-        <div className="flex items-center justify-center gap-3 mb-6">
-          {timerState === 'idle' && (
-            <button onClick={startTimer} disabled={!selectedHabitId}
-              className="px-6 py-2 rounded-sm text-xs font-medium uppercase tracking-wider transition-colors disabled:opacity-30"
-              style={{ backgroundColor: s.accent, color: '#ffffff' }}>start</button>
-          )}
-          {timerState === 'running' && (
-            <button onClick={pauseTimer}
-              className="px-6 py-2 rounded-sm text-xs font-medium uppercase tracking-wider transition-colors"
-              style={{ backgroundColor: s.bgHover, color: s.fg, border: `1px solid ${s.border}` }}>pause</button>
-          )}
-          {timerState === 'paused' && (
-            <>
-              <button onClick={startTimer}
+        <div className="flex flex-col items-center gap-2 mb-6">
+          <div className="flex items-center justify-center gap-3">
+            {timerState === 'idle' && (
+              <button onClick={startTimer} disabled={!selectedHabitId}
                 className="px-6 py-2 rounded-sm text-xs font-medium uppercase tracking-wider transition-colors"
-                style={{ backgroundColor: s.accent, color: '#ffffff' }}>resume</button>
-              <button onClick={resetTimer}
+                style={{
+                  backgroundColor: selectedHabitId ? s.accent : 'transparent',
+                  color: selectedHabitId ? s.bg : s.fgMuted,
+                  border: selectedHabitId ? 'none' : `1px solid ${s.border}`,
+                  opacity: selectedHabitId ? 1 : 0.7,
+                }}>start</button>
+            )}
+            {timerState === 'running' && (
+              <button onClick={pauseTimer}
                 className="px-6 py-2 rounded-sm text-xs font-medium uppercase tracking-wider transition-colors"
-                style={{ color: '#ef4444', border: `1px solid ${s.border}` }}>reset</button>
-            </>
+                style={{ backgroundColor: s.bgHover, color: s.fg, border: `1px solid ${s.border}` }}>pause</button>
+            )}
+            {timerState === 'paused' && (
+              <>
+                <button onClick={startTimer}
+                  className="px-6 py-2 rounded-sm text-xs font-medium uppercase tracking-wider transition-colors"
+                  style={{ backgroundColor: s.accent, color: s.bg }}>resume</button>
+                <button onClick={resetTimer}
+                  className="px-6 py-2 text-xs font-medium uppercase tracking-wider transition-colors"
+                  style={{ color: s.fgMuted, border: `1px solid ${s.border}` }}>reset</button>
+              </>
+            )}
+          </div>
+          {timerState === 'idle' && !selectedHabitId && (
+            <span className="text-[10px] uppercase tracking-wider" style={{ color: s.fgMuted }}>
+              select a habit to begin
+            </span>
           )}
         </div>
         {habits.length > 0 ? (
@@ -1319,9 +1491,9 @@ function PomodoroPage({ habits, scheme: s, sessions, onSession }: {
 
 function StatCard({ s, label, value }: { s: Scheme; label: string; value: string }) {
   return (
-    <div className="p-3 rounded-sm" style={{ border: `1px solid ${s.border}`, backgroundColor: s.bgCard }}>
-      <div className="text-lg font-bold tabular-nums" style={{ color: s.fg }}>{value}</div>
-      <div className="text-[10px] mt-0.5" style={{ color: s.fgMuted }}>{label}</div>
+    <div className="p-3" style={{ border: `1px solid ${s.border}` }}>
+      <div className="text-lg font-bold tabular-nums" style={{ color: s.fg, fontFamily: "'Space Mono', monospace" }}>{value}</div>
+      <div className="text-[10px] mt-0.5 tracking-wider uppercase" style={{ color: s.fgMuted }}>{label}</div>
     </div>
   )
 }
