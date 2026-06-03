@@ -60,7 +60,7 @@ function getWeekDates(offset = 0) {
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday)
     d.setDate(monday.getDate() + i)
-    return { date: d, label: labels[i], num: d.getDate(), key: dateKey(d) }
+    return { date: d, label: labels[i], num: d.getDate(), key: d.toISOString().slice(0, 10) }
   })
 }
 
@@ -143,10 +143,7 @@ function fmtDateShort(d: Date): string {
 }
 
 function dateKey(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+  return d.toISOString().slice(0, 10)
 }
 
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -317,7 +314,7 @@ export default function App() {
     if (!activeBundle) return
     const end = new Date(activeBundle.endDate + 'T00:00:00')
     end.setDate(end.getDate() + 7)
-    setBundles(prev => prev.map(b => b.id === activeBundle.id ? { ...b, endDate: dateKey(end) } : b))
+    setBundles(prev => prev.map(b => b.id === activeBundle.id ? { ...b, endDate: end.toISOString().slice(0, 10) } : b))
   }, [activeBundle])
 
   const deactivateBundle = useCallback(() => setActiveBundleId(null), [])
