@@ -197,6 +197,9 @@ export default function App() {
 
   const scheme = schemes.find(s => s.id === schemeId) ?? schemes[0]
   const isLight = schemeId === 'nothing-light'
+  const heatColors = isLight
+    ? ['transparent', '#E8E8E2', '#BBBBBB', '#666666', '#000000']
+    : ['transparent', '#222222', '#555555', '#999999', '#FFFFFF']
   const weekDates = getWeekDates(weekOffset)
   const activeBundle = bundles.find(b => b.id === activeBundleId) ?? null
   const days = weekDates.map(d => ({
@@ -1224,13 +1227,8 @@ function AnalyticsPage({ habits, scheme: s, activeBundle }: { habits: Habit[]; s
                         title={d ? `${fmtDateShort(d)}: ${heatCount}/${habits.length}` : ''}
                         style={{
                           width: 12, height: 12,
-                          backgroundColor: level < 0 ? 'transparent' :
-                            level === 0 ? s.bg :
-                            level === 1 ? s.accentDim :
-                            level === 2 ? s.borderHover :
-                            level === 3 ? s.accentBg :
-                            s.accent,
-                          opacity: level < 0 ? 0 : 0.85,
+                          backgroundColor: level < 0 ? 'transparent' : heatColors[level],
+                          opacity: level < 0 ? 0 : 0.9,
                           transition: 'transform 0.1s',
                           cursor: 'default',
                         }}
@@ -1246,8 +1244,8 @@ function AnalyticsPage({ habits, scheme: s, activeBundle }: { habits: Habit[]; s
                 {[0, 1, 2, 3, 4].map(l => (
                   <div key={l} style={{
                     width: 10, height: 10, borderRadius: 0,
-                    backgroundColor: l === 0 ? s.bg : l === 1 ? s.accentDim : l === 2 ? s.borderHover : l === 3 ? s.accentBg : s.accent,
-                    opacity: 0.85,
+                    backgroundColor: heatColors[l],
+                    opacity: 0.9,
                   }} />
                 ))}
                 <span>More</span>
