@@ -814,7 +814,7 @@ export default function App() {
         )}
 
         {/* === ANALYTICS PAGE === */}
-        {page === 'analytics' && <AnalyticsPage habits={sortedHabits} scheme={s} activeBundle={activeBundle} />}
+        {page === 'analytics' && <AnalyticsPage habits={sortedHabits} scheme={s} activeBundle={activeBundle} heatColors={heatColors} />}
         {page === 'pomodoro' && <PomodoroPage habits={sortedHabits} scheme={s} sessions={pomodoroSessions} onSession={addPomodoroSession} />}
 
         {/* Footer */}
@@ -1126,7 +1126,7 @@ function HeaderCell({ scheme: s, className = '', children }: {
   )
 }
 
-function AnalyticsPage({ habits, scheme: s, activeBundle }: { habits: Habit[]; scheme: Scheme; activeBundle: Bundle | null }) {
+function AnalyticsPage({ habits, scheme: s, activeBundle, heatColors }: { habits: Habit[]; scheme: Scheme; activeBundle: Bundle | null; heatColors: string[] }) {
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const past30 = getPastDays(30)
   const past90 = getPastDays(90)
