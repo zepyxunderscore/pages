@@ -198,8 +198,8 @@ export default function App() {
   const scheme = schemes.find(s => s.id === schemeId) ?? schemes[0]
   const isLight = schemeId === 'nothing-light'
   const heatColors = isLight
-    ? [s.bgHover, '#E8E8E2', '#BBBBBB', '#666666', '#000000']
-    : [s.bgHover, '#333333', '#666666', '#AAAAAA', '#FFFFFF']
+    ? ['#E0E0D8', '#C8C8C0', '#AAAAAA', '#555555', '#000000']
+    : ['#2A2A2A', '#444444', '#666666', '#AAAAAA', '#FFFFFF']
   const weekDates = getWeekDates(weekOffset)
   const activeBundle = bundles.find(b => b.id === activeBundleId) ?? null
   const days = weekDates.map(d => ({
