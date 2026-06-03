@@ -751,7 +751,7 @@ export default function App() {
                                   onMouseEnter={e => { if (inRange && !checked) e.currentTarget.style.borderColor = s.fg }}
                                   onMouseLeave={e => { if (inRange && !checked) e.currentTarget.style.borderColor = s.borderHover }}
                                   aria-label={checked ? 'Unmark' : 'Mark complete'}>
-                                  {checked && <span className="w-[1.5px] h-[1.5px]" style={{ backgroundColor: isLight ? '#FFFFFF' : '#000000' }} />}
+                                  {checked && <span style={{ color: isLight ? '#FFFFFF' : '#000000', fontSize: 9, lineHeight: 1, fontWeight: 700 }}>✕</span>}
                                 </button>
                               </div>
                             </Cell>
