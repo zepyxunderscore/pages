@@ -196,6 +196,7 @@ export default function App() {
   )
 
   const scheme = schemes.find(s => s.id === schemeId) ?? schemes[0]
+  const isLight = schemeId === 'nothing-light'
   const weekDates = getWeekDates(weekOffset)
   const activeBundle = bundles.find(b => b.id === activeBundleId) ?? null
   const days = weekDates.map(d => ({
@@ -742,15 +743,15 @@ export default function App() {
                                 <button onClick={() => inRange && toggleDate(habit.id, d.key)}
                                   className="w-4 h-4 mech-click transition-all duration-100 relative flex items-center justify-center"
                                   style={{
-                                    backgroundColor: checked ? s.accent : 'transparent',
-                                    border: `1.5px solid ${checked ? s.accent : inRange ? s.borderHover : 'transparent'}`,
+                                    backgroundColor: checked ? (isLight ? '#000000' : '#FFFFFF') : 'transparent',
+                                    border: `1.5px solid ${checked ? (isLight ? '#000000' : '#FFFFFF') : inRange ? s.borderHover : 'transparent'}`,
                                     opacity: inRange ? 1 : 0.15,
                                     cursor: inRange ? 'pointer' : 'default',
                                   }}
                                   onMouseEnter={e => { if (inRange && !checked) e.currentTarget.style.borderColor = s.fg }}
                                   onMouseLeave={e => { if (inRange && !checked) e.currentTarget.style.borderColor = s.borderHover }}
                                   aria-label={checked ? 'Unmark' : 'Mark complete'}>
-                                  {checked && <span className="w-[1.5px] h-[1.5px]" style={{ backgroundColor: s.bg }} />}
+                                  {checked && <span className="w-[1.5px] h-[1.5px]" style={{ backgroundColor: isLight ? '#FFFFFF' : '#000000' }} />}
                                 </button>
                               </div>
                             </Cell>
