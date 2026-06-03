@@ -740,7 +740,7 @@ export default function App() {
                             <Cell key={d.key} idx={idx} total={sortedHabits.length} s={s}>
                               <div className="flex items-center justify-center py-2">
                                 <button onClick={() => inRange && toggleDate(habit.id, d.key)}
-                                  className="w-4 h-4 mech-click transition-all duration-100"
+                                  className="w-4 h-4 mech-click transition-all duration-100 relative flex items-center justify-center"
                                   style={{
                                     backgroundColor: checked ? s.accent : 'transparent',
                                     border: `1.5px solid ${checked ? s.accent : inRange ? s.borderHover : 'transparent'}`,
@@ -749,8 +749,9 @@ export default function App() {
                                   }}
                                   onMouseEnter={e => { if (inRange && !checked) e.currentTarget.style.borderColor = s.fg }}
                                   onMouseLeave={e => { if (inRange && !checked) e.currentTarget.style.borderColor = s.borderHover }}
-                                  aria-label={checked ? 'Unmark' : 'Mark complete'}
-                                />
+                                  aria-label={checked ? 'Unmark' : 'Mark complete'}>
+                                  {checked && <span className="w-[1.5px] h-[1.5px]" style={{ backgroundColor: s.bg }} />}
+                                </button>
                               </div>
                             </Cell>
                           )
@@ -1211,10 +1212,15 @@ function AnalyticsPage({ habits, scheme: s, activeBundle }: { habits: Habit[]; s
                   </span>
                   {grid.map((week, ci) => {
                     const d = week[row]
+                    let heatCount = 0
+                    if (d) {
+                      const dk = dateKey(d)
+                      habits.forEach(h => { if (h.completedDates.includes(dk)) heatCount++ })
+                    }
                     const level = d ? calcHeatLevel(d, habits) : -1
                     return (
                       <div key={ci}
-                        title={d ? `${fmtDateShort(d)}: ${level < 0 ? 'N/A' : level}` : ''}
+                        title={d ? `${fmtDateShort(d)}: ${heatCount}/${habits.length}` : ''}
                         style={{
                           width: 12, height: 12,
                           backgroundColor: level < 0 ? 'transparent' :
