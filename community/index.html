@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Community — xZepyx</title>
+<link rel="stylesheet" href="/theme.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>⚡</text></svg>">
+</head>
+<body>
+
+<div id="loader">
+  <div class="loader-terminal">
+    <div class="loader-line"><span class="loader-prompt">zepyx@root:~$</span><span class="loader-cmd"> init --community</span></div>
+    <div class="loader-line"><span class="loader-prompt">zepyx@root:~$</span><span class="loader-cmd"> load --discussions</span></div>
+    <div class="loader-line"><span class="loader-prompt">zepyx@root:~$</span><span class="loader-cmd"> ready.<span class="loader-cursor"></span></span></div>
+  </div>
+</div>
+
+<div id="cursor"></div>
+<div id="cursor-follower"></div>
+
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="nav-brand"><span class="brand-dot"></span> xZepyx</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/blog/">Blog</a>
+      <a href="/community/" class="active">Community</a>
+      <a href="#" id="admin-link" style="display:none" class="nav-admin">Admin</a>
+      <a href="#" id="login-btn" class="nav-admin">Login</a>
+    </div>
+    <button class="hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<div id="main-content">
+<main class="wrap" style="padding-top:100px">
+
+  <div class="section-header"><h2>COMMUNITY</h2><div class="line"></div></div>
+  <p style="color:var(--txt-muted);margin-bottom:40px">Discussions, feedback, and community interactions. Powered by GitHub Discussions.</p>
+
+  <div class="community-hero glass" style="padding:40px;margin-bottom:32px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px">
+    <div>
+      <h3 style="color:#fff;font-weight:700;margin:0 0 8px">Join the conversation</h3>
+      <p style="color:var(--txt-muted);margin:0;font-size:0.9rem">Start a discussion, ask questions, or share your thoughts.</p>
+    </div>
+    <a href="https://github.com/xZepyx/zepyx.github.io/discussions/new/choose" target="_blank" class="btn btn-primary">New Discussion →</a>
+  </div>
+
+  <div id="discussions-container">
+    <p style="color:var(--txt-muted);text-align:center;padding:60px">Loading discussions...</p>
+  </div>
+
+  <div style="text-align:center;margin-top:32px">
+    <a href="https://github.com/xZepyx/zepyx.github.io/discussions" target="_blank" class="btn btn-ghost">View all on GitHub →</a>
+  </div>
+
+  <div class="section-header" style="margin-top:80px"><h2>GITHUB STATS</h2><div class="line"></div></div>
+  <div id="gh-stats" class="stats-grid">
+    <div class="stat-card glass"><div class="stat-num">—</div><div class="stat-label">Repos</div></div>
+    <div class="stat-card glass"><div class="stat-num">—</div><div class="stat-label">Stars</div></div>
+    <div class="stat-card glass"><div class="stat-num">—</div><div class="stat-label">Followers</div></div>
+    <div class="stat-card glass"><div class="stat-num">—</div><div class="stat-label">Following</div></div>
+  </div>
+
+  <div class="section-header" style="margin-top:80px"><h2>RECENT ACTIVITY</h2><div class="line"></div></div>
+  <div id="recent-activity" class="activity-list">
+    <p style="color:var(--txt-muted);text-align:center;padding:40px">Loading activity...</p>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-socials">
+      <a href="https://github.com/xZepyx" target="_blank" aria-label="GitHub">GH</a>
+      <a href="https://x.com/ZepyxUnderscore" target="_blank" aria-label="X">X</a>
+      <a href="https://reddit.com/user/ArchPowerUser" target="_blank" aria-label="Reddit">RD</a>
+    </div>
+    <div class="footer-copy">
+      <span>2πrh · xZepyx &copy; 2026</span>
+    </div>
+  </div>
+</footer>
+</div>
+
+<script src="/app.js"></script>
+<script>
+(async function() {
+  // Fetch discussions
+  const discContainer = document.getElementById('discussions-container');
+  try {
+    const res = await fetch('https://api.github.com/repos/xZepyx/zepyx.github.io/discussions?per_page=20');
+    if (!res.ok) throw new Error('Discussions not available');
+    const discussions = await res.json();
+
+    if (discussions.length === 0) {
+      discContainer.innerHTML = '<div style="text-align:center;padding:60px 0"><p style="color:var(--txt-muted)">No discussions yet.</p><p style="font-size:0.85rem;color:var(--txt-muted);margin-top:8px">Be the first to start a discussion!</p></div>';
+    } else {
+      discContainer.innerHTML = `<div class="discussions-grid">${discussions.map(d => {
+        const body = (d.body || '').replace(/[#*`>]/g, '').slice(0, 200);
+        const date = new Date(d.created_at).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+        const answers = d.answers || 0;
+        const comments = d.comments || 0;
+        const upvotes = d.upvote_count || 0;
+        const labels = (d.labels || []).map(l => `<span class="tag">${esc(l.name)}</span>`).join('');
+
+        return `<a href="${d.html_url}" target="_blank" class="disc-card glass">
+          <div class="disc-card-header">
+            <span class="disc-author">${esc(d.user?.login || 'unknown')} · ${date}</span>
+          </div>
+          <h4 class="disc-title">${esc(d.title)}</h4>
+          <p class="disc-body">${esc(body)}</p>
+          <div class="disc-card-footer">
+            <span>💬 ${comments}</span>
+            ${answers > 0 ? `<span style="color:var(--success)">✅ ${answers} answered</span>` : ''}
+            <span>👍 ${upvotes}</span>
+          </div>
+        </a>`;
+      }).join('')}</div>`;
+    }
+  } catch(e) {
+    discContainer.innerHTML = `<div style="text-align:center;padding:60px 0">
+      <p style="color:var(--txt-muted)">Discussions are not available directly.</p>
+      <a href="https://github.com/xZepyx/zepyx.github.io/discussions" target="_blank" class="btn btn-ghost" style="margin-top:16px">View on GitHub →</a>
+    </div>`;
+  }
+
+  // Fetch GitHub stats
+  try {
+    const user = await (await fetch('https://api.github.com/users/xZepyx')).json();
+    const repos = await (await fetch('https://api.github.com/users/xZepyx/repos?per_page=100')).json();
+    const totalStars = repos.reduce((s, r) => s + r.stargazers_count, 0);
+
+    document.getElementById('gh-stats').innerHTML = `
+      <div class="stat-card glass"><div class="stat-num">${repos.length}</div><div class="stat-label">Repositories</div></div>
+      <div class="stat-card glass"><div class="stat-num">${totalStars}</div><div class="stat-label">Total Stars</div></div>
+      <div class="stat-card glass"><div class="stat-num">${user.followers}</div><div class="stat-label">Followers</div></div>
+      <div class="stat-card glass"><div class="stat-num">${user.following}</div><div class="stat-label">Following</div></div>
+    `;
+  } catch {}
+
+  // Fetch recent events
+  try {
+    const events = await (await fetch('https://api.github.com/users/xZepyx/events?per_page=10')).json();
+    const activity = document.getElementById('recent-activity');
+    if (events.length === 0) {
+      activity.innerHTML = '<p style="color:var(--txt-muted);text-align:center;padding:40px">No recent public activity.</p>';
+    } else {
+      activity.innerHTML = events.map(e => {
+        const date = new Date(e.created_at).toLocaleDateString('en-US', {month:'short', day:'numeric'});
+        const repo = e.repo.name;
+        let desc = e.type;
+        if (e.type === 'PushEvent') desc = `Pushed to ${repo}`;
+        else if (e.type === 'CreateEvent') desc = `Created ${e.payload.ref_type} in ${repo}`;
+        else if (e.type === 'IssuesEvent') desc = `${e.payload.action} issue in ${repo}`;
+        else if (e.type === 'WatchEvent') desc = `Starred ${repo}`;
+        else if (e.type === 'ForkEvent') desc = `Forked ${repo}`;
+        else if (e.type === 'IssueCommentEvent') desc = `Commented on issue in ${repo}`;
+        else desc = `${e.type} in ${repo}`;
+
+        return `<div class="activity-item glass">
+          <span class="activity-date">${date}</span>
+          <span class="activity-desc">${desc}</span>
+          <a href="https://github.com/${repo}" target="_blank" class="activity-repo">${repo}</a>
+        </div>`;
+      }).join('');
+    }
+  } catch {}
+})();
+</script>
+
+<style>
+.discussions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
+.disc-card { padding: 24px; transition: var(--transition); text-decoration: none; color: inherit; display: flex; flex-direction: column; }
+.disc-card:hover { border-color: var(--accent); transform: translateY(-3px); }
+.disc-card-header { font-size: 0.8rem; color: var(--txt-muted); margin-bottom: 12px; font-family: var(--mono); }
+.disc-title { font-size: 1.05rem; font-weight: 700; color: #fff; margin: 0 0 10px; line-height: 1.3; }
+.disc-body { font-size: 0.85rem; color: var(--txt-muted); line-height: 1.5; flex-grow: 1; }
+.disc-card-footer { display: flex; gap: 16px; margin-top: 14px; font-size: 0.8rem; color: var(--txt-muted); font-family: var(--mono); }
+
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.stat-card { padding: 32px; text-align: center; }
+.stat-num { font-size: 2.5rem; font-weight: 800; color: #fff; letter-spacing: -0.03em; }
+.stat-label { font-size: 0.75rem; color: var(--txt-muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+
+.activity-list { display: flex; flex-direction: column; gap: 12px; }
+.activity-item { padding: 16px 24px; display: flex; align-items: center; gap: 16px; font-size: 0.85rem; }
+.activity-date { font-family: var(--mono); font-size: 0.75rem; color: var(--txt-muted); min-width: 60px; }
+.activity-desc { flex-grow: 1; color: var(--txt); }
+.activity-repo { font-family: var(--mono); font-size: 0.75rem; color: var(--accent); }
+
+@media (max-width: 768px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Blog — xZepyx</title>
+<link rel="stylesheet" href="/theme.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>⚡</text></svg>">
+</head>
+<body>
+
+<div id="loader">
+  <div class="loader-terminal">
+    <div class="loader-line"><span class="loader-prompt">zepyx@root:~$</span><span class="loader-cmd"> fetch --blog</span></div>
+    <div class="loader-line"><span class="loader-prompt">zepyx@root:~$</span><span class="loader-cmd"> parse --entries</span></div>
+    <div class="loader-line"><span class="loader-prompt">zepyx@root:~$</span><span class="loader-cmd"> render.<span class="loader-cursor"></span></span></div>
+  </div>
+</div>
+
+<div id="cursor"></div>
+<div id="cursor-follower"></div>
+
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="nav-brand"><span class="brand-dot"></span> xZepyx</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/blog/" class="active">Blog</a>
+      <a href="/community/">Community</a>
+      <a href="#" id="admin-link" style="display:none" class="nav-admin">Admin</a>
+      <a href="#" id="login-btn" class="nav-admin">Login</a>
+    </div>
+    <button class="hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<div id="main-content">
+<main class="wrap" style="padding-top:100px">
+  <div class="section-header"><h2>BLOG</h2><div class="line"></div></div>
+  <p style="color:var(--txt-muted);margin-bottom:40px">Thoughts, updates, and ramblings about code, Linux, and the eternal struggle of debugging.</p>
+
+  <div id="blog-list" class="blog-grid">
+    <p style="color:var(--txt-muted);grid-column:1/-1;text-align:center;padding:60px">Loading posts...</p>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-socials">
+      <a href="https://github.com/xZepyx" target="_blank" aria-label="GitHub">GH</a>
+      <a href="https://x.com/ZepyxUnderscore" target="_blank" aria-label="X">X</a>
+      <a href="https://reddit.com/user/ArchPowerUser" target="_blank" aria-label="Reddit">RD</a>
+    </div>
+    <div class="footer-copy">
+      <span>2πrh · xZepyx &copy; 2026</span>
+    </div>
+  </div>
+</footer>
+</div>
+
+<script src="/app.js"></script>
+<script>
+(async function() {
+  const container = document.getElementById('blog-list');
+  try {
+    // Try blog repo first, fallback to this repo
+    let issues;
+    try {
+      const res = await fetch('https://api.github.com/repos/xZepyx/zepyx.github.io/issues?state=open&sort=created&direction=desc&labels=blog&per_page=50');
+      if (!res.ok) throw new Error('fail');
+      issues = await res.json();
+    } catch {
+      issues = await ghFetchAll('/repos/xZepyx/zepyx.github.io/issues?state=open&sort=created&direction=desc&labels=blog');
+    }
+    const posts = issues.filter(i => !i.pull_request);
+
+    if (posts.length === 0) {
+      container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:80px 0"><p style="color:var(--txt-muted);margin-bottom:16px">No blog posts yet.</p><p style="font-family:var(--mono);font-size:0.85rem;color:var(--accent)">// TODO: write something</p></div>';
+      return;
+    }
+
+    container.innerHTML = posts.map(p => {
+      const excerpt = (p.body || '').replace(/[#*`>\[\]]/g, '').slice(0, 200).trim();
+      const tags = p.labels.filter(l => l.name !== 'blog').map(l => `<span class="tag">${esc(l.name)}</span>`).join('');
+      const date = new Date(p.created_at).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+
+      return `<a href="/blog/post.html?id=${p.number}" class="blog-card glass">
+        <div class="blog-card-header">
+          <span class="blog-date">${date}</span>
+          ${p.comments > 0 ? `<span style="font-size:0.75rem;color:var(--txt-muted)">💬 ${p.comments}</span>` : ''}
+          ${tags}
+        </div>
+        <h3 class="blog-card-title">${esc(p.title)}</h3>
+        <p class="blog-card-excerpt">${esc(excerpt)}</p>
+        <span class="blog-readmore">Read more →</span>
+      </a>`;
+    }).join('');
+  } catch(e) {
+    container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:80px 0"><p style="color:var(--txt-muted)">Failed to load posts. Try again later.</p></div>';
+  }
+})();
+</script>
+
+<style>
+.blog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 24px; }
+.blog-card { padding: 28px; transition: var(--transition); text-decoration: none; color: inherit; display: flex; flex-direction: column; }
+.blog-card:hover { border-color: var(--accent); transform: translateY(-4px); }
+.blog-card-header { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+.blog-date { font-size: 0.75rem; color: var(--txt-muted); font-family: var(--mono); }
+.blog-card-title { font-size: 1.15rem; font-weight: 700; color: #fff; margin: 0 0 12px; line-height: 1.3; }
+.blog-card-excerpt { font-size: 0.85rem; color: var(--txt-muted); line-height: 1.5; flex-grow: 1; }
+.blog-readmore { font-family: var(--mono); font-size: 0.8rem; color: var(--accent); margin-top: 16px; }
+</style>
+</body>
+</html>

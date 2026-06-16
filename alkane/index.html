@@ -4,9 +4,10 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-<title>Alkane Engine Documentation</title>
+<title>Alkane Engine — xZepyx</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>⚡</text></svg>">
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/theme.css">
 
 <!-- GitHub markdown CSS (REAL fix) -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown-dark.min.css">
@@ -16,9 +17,9 @@
   --bg:#0d1117;
   --panel:#161b22;
   --border:#30363d;
-  --text:#c9d1d9;
-  --muted:#8b949e;
-  --accent:#7c3aed;
+  --text:var(--txt);
+  --muted:var(--txt-muted);
+  --accent:var(--accent);
 
   --note:#3b82f6;
   --tip:#22c55e;
@@ -31,9 +32,9 @@
 *{box-sizing:border-box;margin:0;padding:0}
 
 body{
-  font-family:Inter,system-ui;
+  font-family:var(--font);
   background:var(--bg);
-  color:var(--text);
+  color:var(--txt);
   height:100vh;
   overflow:hidden;
 }
