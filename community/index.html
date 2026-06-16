@@ -126,7 +126,8 @@
   try {
     const u = await (await fetch('https://api.github.com/users/xZepyx')).json()
     const repos = await (await fetch('https://api.github.com/users/xZepyx/repos?per_page=100')).json()
-    const stars = repos.reduce((s,r) => s + r.stargazers_count, 0)
+    const orgRepos = await (await fetch('https://api.github.com/orgs/nucleus-hq/repos?per_page=100')).json()
+    const stars = [...repos, ...orgRepos].reduce((s,r) => s + r.stargazers_count, 0)
     document.getElementById('gh-stats').innerHTML = `
       <div class="stat-card"><span class="stat-num">${repos.length}</span><span class="stat-label">Repos</span></div>
       <div class="stat-card"><span class="stat-num">${stars}</span><span class="stat-label">Stars</span></div>
