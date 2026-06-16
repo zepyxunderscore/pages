@@ -10,193 +10,118 @@
 <body>
 
 <div id="loader">
-  <div class="loader-terminal">
-    <div class="loader-line"><span class="loader-prompt">zepyx@root:~$</span><span class="loader-cmd"> fetch --post</span></div>
-    <div class="loader-line"><span class="loader-prompt">zepyx@root:~$</span><span class="loader-cmd"> render --markdown</span></div>
-    <div class="loader-line"><span class="loader-prompt">zepyx@root:~$</span><span class="loader-cmd"> done.<span class="loader-cursor"></span></span></div>
-  </div>
+  <div class="loader-ring"></div>
+  <div class="loader-text">loading<span class="loader-dots"></span></div>
 </div>
 
 <div id="cursor"></div>
-<div id="cursor-follower"></div>
 
 <nav>
   <div class="nav-inner">
-    <a href="/" class="nav-brand"><span class="brand-dot"></span> xZepyx</a>
+    <a href="/" class="nav-brand"><span class="nav-brand-dot"></span> xZepyx</a>
     <div class="nav-links">
       <a href="/">Home</a>
       <a href="/blog/">Blog</a>
       <a href="/community/">Community</a>
-      <a href="#" id="login-btn" class="nav-admin">Login</a>
+      <a href="/admin/" id="login-btn" class="nav-admin">Login</a>
     </div>
-    <button class="hamburger" aria-label="Menu">
-      <span></span><span></span><span></span>
-    </button>
+    <button class="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
   </div>
 </nav>
 
 <div id="main-content">
-<main class="wrap" style="padding-top:100px">
-  <div id="post-container" class="post-container glass">
-    <div style="text-align:center;padding:80px 0">Loading post...</div>
-  </div>
+<main class="wrap" style="padding-top:120px">
+  <div id="post-container" style="max-width:760px;margin:0 auto"></div>
 </main>
 
 <footer>
   <div class="footer-inner">
     <div class="footer-socials">
-      <a href="https://github.com/xZepyx" target="_blank" aria-label="GitHub">GH</a>
-      <a href="https://x.com/ZepyxUnderscore" target="_blank" aria-label="X">X</a>
-      <a href="https://reddit.com/user/ArchPowerUser" target="_blank" aria-label="Reddit">RD</a>
+      <a href="https://github.com/xZepyx" target="_blank">GH</a>
+      <a href="https://x.com/ZepyxUnderscore" target="_blank">X</a>
+      <a href="https://reddit.com/user/ArchPowerUser" target="_blank">RD</a>
     </div>
-    <div class="footer-copy">
-      <span>2πrh · xZepyx &copy; 2026</span>
-    </div>
+    <div class="footer-copy">2πrh · xZepyx &copy; 2026</div>
   </div>
 </footer>
 </div>
 
-<div id="auth-modal" class="modal-overlay">
-  <div class="modal-box glass">
-    <div class="modal-header">
-      <h3>GitHub Login</h3>
-      <button id="close-auth-modal" class="modal-close">✕</button>
-    </div>
-    <div class="modal-body" style="text-align:center">
-      <p>Enter this code on GitHub to authenticate:</p>
-      <div id="device-code" class="device-code">------</div>
-      <a id="device-verify" href="#" target="_blank" class="btn btn-primary" style="margin-top:16px">Verify on GitHub →</a>
-      <p style="margin-top:16px;font-size:0.8rem;color:var(--txt-muted)">Only the repo owner (@xZepyx) will have admin access.</p>
-    </div>
-  </div>
-</div>
-
 <script src="/app.js"></script>
 <script>
-(async function() {
-  const params = new URLSearchParams(window.location.search);
-  const id = params.get('id');
-  const container = document.getElementById('post-container');
-
-  if (!id) {
-    container.innerHTML = '<div style="text-align:center;padding:80px 0"><h2>No post specified</h2><a href="/blog/" class="btn btn-ghost" style="margin-top:20px">← Back to blog</a></div>';
-    return;
-  }
+;(async () => {
+  const id = new URLSearchParams(window.location.search).get('id')
+  const c = document.getElementById('post-container')
+  if (!id) { c.innerHTML = '<div style="text-align:center;padding:80px 0"><h2 style="font-size:1.5rem">No post specified</h2><a href="/blog/" class="btn btn-ghost" style="margin-top:20px">← Back</a></div>'; return }
 
   try {
-    let post;
-    try {
-      const res = await fetch(`https://api.github.com/repos/xZepyx/zepyx.github.io/issues/${id}`);
-      if (!res.ok) throw new Error('not found');
-      post = await res.json();
-    } catch {
-      post = null;
-    }
+    const r = await fetch('https://api.github.com/repos/xZepyx/zepyx.github.io/issues/' + id)
+    if (!r.ok) throw Error()
+    const post = await r.json()
+    if (post.pull_request) throw Error()
 
-    if (!post || post.pull_request) {
-      container.innerHTML = '<div style="text-align:center;padding:80px 0"><h2>Post not found</h2><p style="color:var(--txt-muted);margin:12px 0">This post might have been removed.</p><a href="/blog/" class="btn btn-ghost" style="margin-top:20px">← Back to blog</a></div>';
-      return;
-    }
+    const labels = post.labels.filter(l => l.name !== 'blog').map(l => `<span class="tag">${esc(l.name)}</span>`).join('')
+    const bodyHtml = renderMarkdown(post.body || '')
+    const date = new Date(post.created_at).toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })
+    const upd = post.updated_at !== post.created_at ? ` · Updated ${formatDate(post.updated_at)}` : ''
 
-    const labels = post.labels.filter(l => l.name !== 'blog').map(l => `<span class="tag">${esc(l.name)}</span>`).join('');
-    const md = post.body || '';
-    let bodyHtml = esc(md)
-    bodyHtml = bodyHtml.replace(/```(\w*)\s*([\s\S]*?)```/g, (_, lang, code) => `<pre><code class="lang-${lang}">${esc(code)}</code></pre>`);
-    bodyHtml = bodyHtml.replace(/`([^`]+)`/g, '<code>$1</code>');
-    bodyHtml = bodyHtml.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy" style="max-width:100%;border-radius:var(--radius-sm);margin:16px 0">');
-    bodyHtml = bodyHtml.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-    bodyHtml = bodyHtml.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-    bodyHtml = bodyHtml.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    bodyHtml = bodyHtml.replace(/\*(.+?)\*/g, '<em>$1</em>');
-    bodyHtml = bodyHtml.replace(/^###### (.+)/gm, '<h6>$1</h6>');
-    bodyHtml = bodyHtml.replace(/^##### (.+)/gm, '<h5>$1</h5>');
-    bodyHtml = bodyHtml.replace(/^#### (.+)/gm, '<h4>$1</h4>');
-    bodyHtml = bodyHtml.replace(/^### (.+)/gm, '<h3>$1</h3>');
-    bodyHtml = bodyHtml.replace(/^## (.+)/gm, '<h2>$1</h2>');
-    bodyHtml = bodyHtml.replace(/^# (.+)/gm, '<h1>$1</h1>');
-    bodyHtml = bodyHtml.replace(/^&gt; (.+)/gm, '<blockquote>$1</blockquote>');
-    bodyHtml = bodyHtml.replace(/^---+/gm, '<hr>');
-    bodyHtml = bodyHtml.replace(/^- (.+)/gm, '<li>$1</li>');
-    bodyHtml = '<p>' + bodyHtml + '</p>';
-    bodyHtml = bodyHtml.replace(/<li><\/li>/g, '');
-    bodyHtml = bodyHtml.replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>');
-
-    const date = new Date(post.created_at).toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-    const updateDate = post.updated_at !== post.created_at ? ` · Updated ${formatDate(post.updated_at)}` : '';
-
-    container.innerHTML = `
+    c.innerHTML = `
       <a href="/blog/" class="post-back">← Back to blog</a>
-      <div class="post-meta-bar">
-        <span class="post-date">${date}${updateDate}</span>
-        <span class="post-author">by ${esc(post.user?.login || 'unknown')}</span>
-        ${labels ? `<span class="post-tags">${labels}</span>` : ''}
-      </div>
-      <h1 class="post-title">${esc(post.title)}</h1>
-      <div class="post-body">${bodyHtml}</div>
-      <div class="post-reactions">
-        <div class="reaction-bar">
-          <a href="${post.html_url}" target="_blank" class="btn btn-ghost">💬 Comment on GitHub</a>
-          <a href="${post.html_url}" target="_blank" class="btn btn-ghost">👍 React on GitHub</a>
+      <div class="post-header">
+        <div class="post-meta">
+          <span>${date}</span>${upd}
+          <span>by ${esc(post.user?.login||'unknown')}</span>
+          ${labels ? `<span style="display:inline-flex;gap:6px">${labels}</span>` : ''}
         </div>
-        ${post.reactions?.total_count > 0 ? `
-        <div style="margin-top:12px;font-size:0.85rem;color:var(--txt-muted)">
-          ${post.reactions['+1'] ? `👍 ${post.reactions['+1']} ` : ''}
-          ${post.reactions['-1'] ? `👎 ${post.reactions['-1']} ` : ''}
-          ${post.reactions.laugh ? `😄 ${post.reactions.laugh} ` : ''}
-          ${post.reactions.hooray ? `🎉 ${post.reactions.hooray} ` : ''}
-          ${post.reactions.heart ? `❤️ ${post.reactions.heart} ` : ''}
-          ${post.reactions.rocket ? `🚀 ${post.reactions.rocket} ` : ''}
-          ${post.reactions.eyes ? `👀 ${post.reactions.eyes} ` : ''}
-        </div>` : ''}
+        <h1 class="post-title">${esc(post.title)}</h1>
       </div>
-      <div class="post-comments" id="post-comments-section">
-        <h3 style="font-weight:600;font-size:1.1rem;margin-bottom:20px">Comments (${post.comments})</h3>
-        <div id="giscus-comments"></div>
+      <div class="post-body prose">${bodyHtml}</div>
+      <div class="post-footer">
+        <div class="post-reactions">
+          <span style="font-size:0.85rem;color:var(--txt-muted)">${post.reactions?.total_count ? Object.entries({'+1':'👍','-1':'👎','laugh':'😄','hooray':'🎉','heart':'❤️','rocket':'🚀','eyes':'👀'}).filter(([k])=>post.reactions[k]).map(([k,v])=>v+' '+post.reactions[k]).join(' ') : ''}</span>
+          <a href="${post.html_url}" target="_blank" class="btn btn-ghost" style="font-size:0.75rem">Comment on GitHub →</a>
+        </div>
       </div>
-    `;
-
-    if (post.comments > 0) {
-      loadGiscus(post.html_url);
-    } else {
-      document.getElementById('giscus-comments').innerHTML = '<p style="color:var(--txt-muted);font-size:0.9rem">No comments yet. Be the first to <a href="' + post.html_url + '" target="_blank">comment on GitHub</a>.</p>';
-    }
+      ${post.comments > 0 ? `
+      <div class="post-comments">
+        <h3 style="font-weight:600;font-size:1rem;color:#fff;margin-bottom:20px">Comments (${post.comments})</h3>
+        <p style="color:var(--txt-muted);font-size:0.85rem">Comments are on GitHub. <a href="${post.html_url}" target="_blank">View them here →</a></p>
+      </div>` : `
+      <div class="post-comments">
+        <p style="color:var(--txt-muted);font-size:0.85rem">No comments yet. <a href="${post.html_url}" target="_blank">Be the first on GitHub →</a></p>
+      </div>`}
+    `
   } catch(e) {
-    container.innerHTML = '<div style="text-align:center;padding:80px 0"><h2>Error loading post</h2><p style="color:var(--txt-muted)">' + esc(e.message) + '</p><a href="/blog/" class="btn btn-ghost" style="margin-top:20px">← Back to blog</a></div>';
+    c.innerHTML = '<div style="text-align:center;padding:80px 0"><h2 style="font-size:1.5rem">Post not found</h2><p style="color:var(--txt-muted);margin-top:8px">It may have been removed.</p><a href="/blog/" class="btn btn-ghost" style="margin-top:20px">← Back to blog</a></div>'
   }
-})();
+})()
 </script>
 
 <style>
-.post-container { padding: 50px 60px; max-width: 800px; margin: 0 auto; }
-.post-back { font-family: var(--mono); font-size: 0.85rem; color: var(--txt-muted); display: inline-block; margin-bottom: 24px; }
-.post-back:hover { color: var(--accent); }
-.post-meta-bar { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; font-size: 0.85rem; color: var(--txt-muted); }
-.post-author { color: var(--accent); }
-.post-tags { display: flex; gap: 6px; }
-.post-title { font-size: 2.4rem; font-weight: 800; line-height: 1.2; margin: 0 0 32px; color: #fff; }
-.post-body { font-size: 1rem; line-height: 1.8; color: var(--txt); }
-.post-body h1, .post-body h2, .post-body h3, .post-body h4 { color: #fff; margin: 32px 0 16px; font-weight: 700; }
-.post-body h1 { font-size: 1.8rem; } .post-body h2 { font-size: 1.5rem; } .post-body h3 { font-size: 1.2rem; }
-.post-body p { margin-bottom: 16px; }
-.post-body code { font-family: var(--mono); font-size: 0.85rem; background: var(--accent-dim); padding: 2px 6px; border-radius: 4px; }
-.post-body pre { background: var(--bg-alt); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 20px; overflow-x: auto; margin: 20px 0; }
-.post-body pre code { background: none; padding: 0; }
-.post-body img { max-width: 100%; border-radius: var(--radius-sm); margin: 20px 0; }
-.post-body blockquote { border-left: 3px solid var(--accent); padding-left: 20px; margin: 20px 0; color: var(--txt-muted); font-style: italic; }
-.post-body hr { border: none; border-top: 1px solid var(--line); margin: 32px 0; }
-.post-body ul { padding-left: 24px; margin-bottom: 16px; }
-.post-body li { margin-bottom: 8px; }
-.post-reactions { margin: 40px 0; padding: 24px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.reaction-bar { display: flex; gap: 12px; flex-wrap: wrap; }
-.reaction-btn { background: var(--accent-dim); border: 1px solid var(--line-strong); color: var(--txt); padding: 6px 12px; border-radius: var(--radius-xs); cursor: pointer; transition: var(--transition); font-size: 0.9rem; }
-.reaction-btn:hover { background: rgba(119,168,255,0.2); border-color: var(--accent); }
-.post-comments { margin-top: 40px; }
-#giscus-comments { min-height: 100px; }
+.post-back { font-family: var(--mono); font-size: 0.8rem; color: var(--txt-muted); display: inline-block; margin-bottom: 32px; transition: var(--transition); }
+.post-back:hover { color: var(--accent-1); }
+.post-header { margin-bottom: 48px; }
+.post-meta { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; font-size: 0.75rem; color: var(--txt-muted); font-family: var(--mono); margin-bottom: 20px; }
+.post-title { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; line-height: 1.15; color: #fff; letter-spacing: -0.03em; margin: 0; }
 
-@media (max-width: 768px) {
-  .post-container { padding: 30px 24px; }
-  .post-title { font-size: 1.6rem; }
-}
+/* Prose */
+.prose { font-size: 0.95rem; line-height: 1.85; color: var(--txt); }
+.prose h1, .prose h2, .prose h3, .prose h4 { color: #fff; margin: 40px 0 16px; font-weight: 700; letter-spacing: -0.02em; }
+.prose h1 { font-size: 1.8rem; } .prose h2 { font-size: 1.5rem; } .prose h3 { font-size: 1.2rem; } .prose h4 { font-size: 1rem; }
+.prose p { margin-bottom: 20px; }
+.prose code { font-family: var(--mono); font-size: 0.85rem; background: var(--accent-dim); padding: 2px 6px; border-radius: 4px; color: var(--accent-1); }
+.prose pre { background: rgba(0,0,0,0.4); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 20px; overflow-x: auto; margin: 24px 0; }
+.prose pre code { background: none; padding: 0; color: var(--txt); }
+.prose img { max-width: 100%; border-radius: var(--radius-sm); margin: 24px 0; }
+.prose blockquote { border-left: 3px solid var(--accent-1); padding-left: 20px; margin: 24px 0; color: var(--txt-muted); font-style: italic; }
+.prose hr { border: none; border-top: 1px solid var(--line); margin: 40px 0; }
+.prose ul { padding-left: 24px; margin-bottom: 20px; }
+.prose li { margin-bottom: 8px; }
+.prose a { color: var(--accent-1); }
+.prose strong { color: #fff; }
+
+.post-footer { margin: 48px 0; padding: 24px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.post-reactions { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.post-comments { margin-top: 40px; }
 </style>
 </body>
 </html>
