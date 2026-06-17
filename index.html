@@ -68,7 +68,7 @@
 
 <section class="wrap" style="margin-top:80px">
   <div class="section-tag">About</div>
-  <div class="section-title">The person behind helium-wsl and nucleus-shell</div>
+  <div class="section-title">The person behind the shell</div>
   <div class="about-grid">
     <div class="about-text fade-in">
       <p>Hi. I'm xZepyx, a Linux user who thought <em>"making a shell sounds easy"</em> and has been paying for that decision ever since.</p>
@@ -204,10 +204,7 @@ document.getElementById('projects-grid').innerHTML = PROJECTS.map(p => `
     document.getElementById('follower-count').textContent = u.followers
     const repos = await (await fetch('https://api.github.com/users/xZepyx/repos?per_page=100')).json()
     document.getElementById('repo-count').textContent = repos.length
-    const orgRepos = await (await fetch('https://api.github.com/orgs/nucleus-hq/repos?per_page=100')).json()
-    const allRepos = [...repos, ...orgRepos]
-    const totalStars = allRepos.reduce((s,r) => s + r.stargazers_count, 0)
-    document.getElementById('star-count').textContent = totalStars
+    document.getElementById('star-count').textContent = repos.reduce((s,r) => s + r.stargazers_count, 0)
   } catch {}
 })()
 </script>
