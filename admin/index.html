@@ -10,98 +10,73 @@
 <body>
 
 <div id="cursor"></div>
+<div id="cursor-follower"></div>
 
 <nav>
   <div class="nav-inner">
-    <a href="/" class="nav-brand"><span class="nav-brand-dot"></span> xZepyx</a>
+    <a href="/" class="nav-brand"><span class="brand-dot"></span> xZepyx</a>
     <div class="nav-links">
       <a href="/">Home</a>
       <a href="/blog/">Blog</a>
       <a href="/community/">Community</a>
       <a href="/admin/" class="active nav-admin">Admin</a>
+      <a href="#" id="login-btn" class="nav-admin">Login</a>
     </div>
-    <button class="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
+    <button class="hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
   </div>
 </nav>
 
 <div id="main-content" class="visible">
-<main class="wrap" style="padding-top:120px">
+<main class="wrap" style="padding-top:100px">
 
-  <div class="section-tag">Admin</div>
-  <div class="section-title">Panel</div>
+  <div class="section-header"><h2>ADMIN_PANEL</h2><div class="line"></div></div>
 
   <div id="admin-auth-gate">
-    <div class="admin-login-card" style="max-width:520px;margin:60px auto 0">
-      <div style="font-size:2rem;margin-bottom:16px">🔐</div>
-      <h3 style="font-size:1.3rem;font-weight:700;color:#fff;margin-bottom:8px">Admin access required</h3>
-      <p style="color:var(--txt-muted);font-size:0.9rem;margin-bottom:24px">
-        Enter a GitHub Personal Access Token with <strong>repo</strong> scope to verify you're @xZepyx.
-        The token will be used to push a verification entry to <code style="color:var(--accent-1)">${CONFIG.owner}/${CONFIG.authRepo}/auth</code>.
-        Stored in localStorage — never sent anywhere except GitHub API.
-      </p>
-      <div style="margin-bottom:16px">
-        <label style="display:block;font-size:0.75rem;font-weight:600;color:var(--txt);margin-bottom:6px">GitHub Personal Access Token</label>
-        <div style="display:flex;gap:8px">
-          <input type="password" id="pat-input" class="form-input" placeholder="ghp_..." style="flex:1" autocomplete="off">
-          <button id="pat-toggle-btn" class="btn btn-ghost" style="padding:8px 12px;font-size:0.75rem" type="button">Show</button>
-        </div>
-      </div>
-      <button id="admin-login-btn" class="btn btn-primary" style="width:100%">Verify & Login</button>
-      <div id="admin-login-status" style="margin-top:12px;font-size:0.8rem"></div>
-      <details style="margin-top:20px;color:var(--txt-muted);font-size:0.8rem">
-        <summary style="cursor:pointer">How to get a PAT</summary>
-        <ol style="margin-top:12px;padding-left:20px;line-height:1.8">
-          <li>Go to <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a></li>
-          <li>Click <strong>Generate new token</strong> → <strong>Fine-grained token</strong></li>
-          <li>Set <strong>Repository access</strong> to <strong>Public Repositories (read-only)</strong> and add <code>${CONFIG.owner}/${CONFIG.authRepo}</code> with <strong>Read and Write</strong> access to Contents</li>
-          <li>Generate and paste the token above</li>
-          <li>It will push to <code>${CONFIG.owner}/${CONFIG.authRepo}/auth</code> to verify write access</li>
-        </ol>
-      </details>
+    <div class="admin-login-prompt glass" style="text-align:center;padding:60px;max-width:500px;margin:0 auto">
+      <h3 style="color:#fff;font-weight:700;margin-bottom:16px">🔐 Admin Access Required</h3>
+      <p style="color:var(--txt-muted);margin-bottom:24px">Log in with GitHub to manage your blog and site content. Only @xZepyx has access.</p>
+      <button id="admin-login-btn" class="btn btn-primary">Login with GitHub</button>
     </div>
   </div>
 
   <div id="admin-panel" style="display:none">
-    <div class="admin-banner" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;margin-bottom:40px">
+    <div class="admin-header glass" style="padding:32px;margin-bottom:32px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px">
       <div>
-        <h3 style="color:#fff;font-weight:700;margin:0 0 4px">Welcome, <span id="admin-name">Admin</span></h3>
-        <p style="color:var(--txt-muted);margin:0;font-size:0.85rem">Authenticated via push verification.</p>
+        <h3 style="color:#fff;font-weight:700;margin:0 0 4px">Welcome back, <span id="admin-name">Admin</span></h3>
+        <p style="color:var(--txt-muted);margin:0;font-size:0.85rem">You are logged in as the site owner.</p>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <span id="user-badge"></span>
-        <button id="admin-logout-btn" class="btn btn-ghost" style="font-size:0.75rem;padding:6px 14px">Logout</button>
-      </div>
+      <button id="admin-logout-btn" class="btn btn-ghost">Logout</button>
     </div>
 
     <div class="admin-grid">
-      <div class="admin-card">
-        <h4>Create blog post</h4>
-        <p style="font-size:0.85rem;color:var(--txt-muted);margin-bottom:24px">Published as a GitHub Issue with the <span class="tag">blog</span> label.</p>
-        <form id="blog-form">
+      <div class="admin-card glass">
+        <h4>Create Blog Post</h4>
+        <p>Write a new blog post. It will be published as a GitHub Issue with the "blog" label.</p>
+        <form id="blog-form" style="margin-top:20px">
           <div class="form-group">
             <label for="post-title">Title</label>
             <input type="text" id="post-title" class="form-input" placeholder="Post title" required>
           </div>
           <div class="form-group">
-            <label for="post-body">Content <span style="color:var(--txt-muted);font-weight:400">(Markdown)</span></label>
-            <textarea id="post-body" class="form-input form-textarea" rows="12" placeholder="Write in markdown..." required></textarea>
+            <label for="post-body">Content (Markdown)</label>
+            <textarea id="post-body" class="form-textarea" rows="14" placeholder="Write your post in markdown..." required></textarea>
           </div>
           <div class="form-group">
-            <label for="post-tags">Tags <span style="color:var(--txt-muted);font-weight:400">(comma-separated)</span></label>
+            <label for="post-tags">Tags (comma-separated)</label>
             <input type="text" id="post-tags" class="form-input" placeholder="rust, linux, tutorial">
           </div>
-          <div style="display:flex;align-items:center;gap:16px">
-            <button type="submit" id="publish-btn" class="btn btn-primary">Publish →</button>
-            <span id="publish-status" style="font-size:0.85rem"></span>
-          </div>
+          <button type="submit" id="publish-btn" class="btn btn-primary">Publish Post</button>
+          <span id="publish-status" style="margin-left:12px;font-size:0.85rem"></span>
         </form>
       </div>
 
-      <div class="admin-card">
-        <h4>Published posts</h4>
-        <p style="font-size:0.85rem;color:var(--txt-muted);margin-bottom:24px">Click to edit or view on GitHub.</p>
-        <div id="admin-post-list">
-          <p style="color:var(--txt-muted);font-size:0.85rem">Loading...</p>
+      <div class="admin-card glass">
+        <h4>Existing Posts</h4>
+        <p>Manage your published blog posts.</p>
+        <div id="admin-post-list" style="margin-top:16px">
+          <p style="color:var(--txt-muted);font-size:0.85rem">Loading posts...</p>
         </div>
       </div>
     </div>
@@ -110,139 +85,239 @@
 </main>
 </div>
 
+<div id="auth-modal" class="modal-overlay">
+  <div class="modal-box glass">
+    <div class="modal-header">
+      <h3>GitHub Login</h3>
+      <button id="close-auth-modal" class="modal-close">✕</button>
+    </div>
+    <div class="modal-body" style="text-align:center">
+      <p>Enter this code on GitHub to authenticate:</p>
+      <div id="device-code" class="device-code">------</div>
+      <a id="device-verify" href="#" target="_blank" class="btn btn-primary" style="margin-top:16px">Verify on GitHub →</a>
+      <p style="margin-top:16px;font-size:0.8rem;color:var(--txt-muted)">Only the repo owner (@xZepyx) will have admin access.</p>
+    </div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
 <script>
-// Override restoreSession to also show/hide admin panel
-const origUpdateAuthUI = updateAuthUI
-updateAuthUI = function() {
-  if (origUpdateAuthUI) origUpdateAuthUI()
-  const gate = document.getElementById('admin-auth-gate')
-  const panel = document.getElementById('admin-panel')
-  if (!gate || !panel) return
+const state = { creating: false };
+
+function escHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function updateAdminUI() {
+  const gate = document.getElementById('admin-auth-gate');
+  const panel = document.getElementById('admin-panel');
+
   if (State.isAdmin) {
-    gate.style.display = 'none'
-    panel.style.display = 'block'
-    document.getElementById('admin-name').textContent = State.user?.login || 'Admin'
-    loadAdminPosts()
+    gate.style.display = 'none';
+    panel.style.display = 'block';
+    document.getElementById('admin-name').textContent = State.user?.login || 'Admin';
+    loadAdminPosts();
   } else {
-    gate.style.display = 'block'
-    panel.style.display = 'none'
+    gate.style.display = 'block';
+    panel.style.display = 'none';
   }
 }
 
 async function loadAdminPosts() {
-  const c = document.getElementById('admin-post-list')
+  const container = document.getElementById('admin-post-list');
   try {
-    const r = await fetch('https://api.github.com/repos/xZepyx/zepyx.github.io/issues?state=open&sort=created&direction=desc&labels=blog&per_page=50')
-    const posts = (await r.json()).filter(i => !i.pull_request)
-    if (!posts.length) { c.innerHTML = '<p style="color:var(--txt-muted);font-size:0.85rem">No posts yet.</p>'; return }
-    c.innerHTML = posts.map(p => `
+    const res = await fetch('https://api.github.com/repos/xZepyx/zepyx.github.io/issues?state=open&sort=created&direction=desc&labels=blog&per_page=50');
+    const issues = await res.json();
+    const posts = issues.filter(i => !i.pull_request);
+
+    if (posts.length === 0) {
+      container.innerHTML = '<p style="color:var(--txt-muted);font-size:0.85rem">No posts yet.</p>';
+      return;
+    }
+
+    container.innerHTML = posts.map(p => `
       <div class="admin-post-item">
         <div class="admin-post-info">
-          <a href="/blog/post.html?id=${p.number}" target="_blank" class="admin-post-title">${esc(p.title)}</a>
-          <span class="admin-post-meta">#${p.number} · ${formatDate(p.created_at)} · 💬 ${p.comments}</span>
+          <a href="/blog/post.html?id=${p.number}" target="_blank" class="admin-post-title">${escHtml(p.title)}</a>
+          <span class="admin-post-meta">#${p.number} · ${new Date(p.created_at).toLocaleDateString()} · 💬 ${p.comments}</span>
         </div>
-        <a href="${p.html_url}" target="_blank" class="btn btn-ghost" style="font-size:0.7rem;padding:4px 10px">Edit</a>
+        <a href="${p.html_url}" target="_blank" class="btn btn-ghost" style="font-size:0.75rem;padding:4px 12px">Edit on GitHub</a>
       </div>
-    `).join('')
-  } catch { c.innerHTML = '<p style="color:var(--danger);font-size:0.85rem">Failed to load.</p>' }
-}
-
-function waitForReady() {
-  if (!State.ready) return setTimeout(waitForReady, 100)
-  updateAuthUI()
-}
-waitForReady()
-
-// ─── PAT toggle ───
-document.getElementById('pat-toggle-btn')?.addEventListener('click', () => {
-  const inp = document.getElementById('pat-input')
-  const btn = document.getElementById('pat-toggle-btn')
-  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = 'Hide' }
-  else { inp.type = 'password'; btn.textContent = 'Show' }
-})
-
-// ─── Login with PAT push verification ───
-document.getElementById('admin-login-btn')?.addEventListener('click', async () => {
-  const pat = document.getElementById('pat-input').value.trim()
-  const status = document.getElementById('admin-login-status')
-  const btn = document.getElementById('admin-login-btn')
-  if (!pat) { status.textContent = '⚠️ Enter a token'; return }
-  btn.textContent = 'Verifying...'; btn.disabled = true
-  status.textContent = ''; status.style.color = 'var(--txt-muted)'
-  try {
-    await verifyWithPush(pat)
-    status.textContent = '✅ Verified! You have admin access.'
-    status.style.color = 'var(--success)'
-    document.getElementById('pat-input').value = ''
-    updateAuthUI()
-  } catch (e) {
-    status.textContent = `❌ ${e.message}`
-    status.style.color = 'var(--danger)'
+    `).join('');
+  } catch(e) {
+    container.innerHTML = '<p style="color:var(--tx-danger)">Failed to load posts.</p>';
   }
-  btn.textContent = 'Verify & Login'; btn.disabled = false
-})
+}
 
-// ─── Enter key to login ───
-document.getElementById('pat-input')?.addEventListener('keydown', e => {
-  if (e.key === 'Enter') document.getElementById('admin-login-btn')?.click()
-})
+function initAdmin() {
+  // Wait for app.js to initialize
+  if (!State.ready) {
+    setTimeout(initAdmin, 100);
+    return;
+  }
+  updateAdminUI();
 
-// ─── Logout ───
-document.getElementById('admin-logout-btn')?.addEventListener('click', () => { logout(); updateAuthUI() })
+  // Admin login
+  document.getElementById('admin-login-btn')?.addEventListener('click', async () => {
+    try {
+      const btn = document.getElementById('admin-login-btn');
+      btn.textContent = 'Connecting...';
+      btn.disabled = true;
 
-// ─── Create blog post ───
-document.getElementById('blog-form')?.addEventListener('submit', async (e) => {
-  e.preventDefault()
-  const title = document.getElementById('post-title').value.trim()
-  const body = document.getElementById('post-body').value.trim()
-  const tagsRaw = document.getElementById('post-tags').value.trim()
-  const status = document.getElementById('publish-status')
-  const btn = document.getElementById('publish-btn')
-  if (!title || !body) { status.textContent = '⚠️ Title and content required'; status.style.color = 'var(--warning)'; return }
-  btn.textContent = 'Publishing...'; btn.disabled = true; status.textContent = ''
-  try {
-    const labels = ['blog']
-    if (tagsRaw) tagsRaw.split(',').map(t => t.trim()).filter(Boolean).forEach(t => labels.push(t))
-    const res = await fetch('https://api.github.com/repos/xZepyx/zepyx.github.io/issues', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${State.token}`, 'Content-Type': 'application/json', Accept: 'application/vnd.github.v3+json' },
-      body: JSON.stringify({ title, body, labels })
-    })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const issue = await res.json()
-    status.textContent = `✅ Published #${issue.number}`
-    status.style.color = 'var(--success)'
-    document.getElementById('post-title').value = ''
-    document.getElementById('post-body').value = ''
-    document.getElementById('post-tags').value = ''
-    loadAdminPosts()
-  } catch (e) { status.textContent = `❌ ${e.message}`; status.style.color = 'var(--danger)' }
-  btn.textContent = 'Publish →'; btn.disabled = false
-})
+      // Show device flow modal
+      const res = await fetch('https://github.com/login/device/code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ client_id: CONFIG.clientId, scope: 'repo' })
+      });
+      const data = await res.json();
+      if (!data.device_code) throw new Error('Failed');
+
+      document.getElementById('device-code').textContent = data.user_code;
+      document.getElementById('device-verify').href = data.verification_uri;
+      document.getElementById('auth-modal').classList.add('open');
+
+      // Poll
+      const token = await new Promise((resolve, reject) => {
+        const poll = setInterval(async () => {
+          try {
+            const r = await fetch('https://github.com/login/oauth/access_token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+              body: JSON.stringify({
+                client_id: CONFIG.clientId,
+                device_code: data.device_code,
+                grant_type: 'urn:ietf:params:oauth:grant-type:device_code'
+              })
+            });
+            const d = await r.json();
+            if (d.access_token) { clearInterval(poll); resolve(d.access_token); }
+            else if (d.error === 'authorization_pending') {}
+            else if (d.error === 'access_denied' || d.error === 'expired_token') { clearInterval(poll); reject(new Error('Auth cancelled')); }
+          } catch {}
+        }, (data.interval || 5) * 1000);
+      });
+
+      const verified = await verifyAdmin(token);
+      if (!verified) {
+        alert('Access denied. Only @xZepyx can access the admin panel.');
+        logout();
+      }
+      document.getElementById('auth-modal').classList.remove('open');
+      updateAdminUI();
+    } catch(e) {
+      alert('Login failed: ' + e.message);
+      document.getElementById('admin-login-btn').textContent = 'Login with GitHub';
+      document.getElementById('admin-login-btn').disabled = false;
+    }
+  });
+
+  // Logout
+  document.getElementById('admin-logout-btn')?.addEventListener('click', () => {
+    logout();
+    updateAdminUI();
+  });
+
+  // Create blog post
+  document.getElementById('blog-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (state.creating) return;
+
+    const title = document.getElementById('post-title').value.trim();
+    const body = document.getElementById('post-body').value.trim();
+    const tagsRaw = document.getElementById('post-tags').value.trim();
+
+    if (!title || !body) {
+      document.getElementById('publish-status').textContent = '⚠️ Title and content required';
+      document.getElementById('publish-status').style.color = 'var(--warning)';
+      return;
+    }
+
+    state.creating = true;
+    const btn = document.getElementById('publish-btn');
+    const status = document.getElementById('publish-status');
+    btn.textContent = 'Publishing...';
+    btn.disabled = true;
+    status.textContent = '';
+    status.style.color = 'var(--txt-muted)';
+
+    try {
+      const labels = ['blog'];
+      if (tagsRaw) {
+        tagsRaw.split(',').map(t => t.trim()).filter(Boolean).forEach(t => labels.push(t));
+      }
+
+      const res = await fetch('https://api.github.com/repos/xZepyx/zepyx.github.io/issues', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${State.token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/vnd.github.v3+json'
+        },
+        body: JSON.stringify({ title, body, labels })
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const issue = await res.json();
+      status.textContent = `✅ Published! #${issue.number}`;
+      status.style.color = 'var(--success)';
+      document.getElementById('post-title').value = '';
+      document.getElementById('post-body').value = '';
+      document.getElementById('post-tags').value = '';
+      loadAdminPosts();
+    } catch(err) {
+      status.textContent = `❌ Failed: ${err.message}`;
+      status.style.color = 'var(--danger)';
+    }
+
+    state.creating = false;
+    btn.textContent = 'Publish Post';
+    btn.disabled = false;
+  });
+};
+
+document.addEventListener('DOMContentLoaded', initAdmin);
+
+// Override app.js init for admin-specific behavior
+const origUpdate = updateAuthUI;
+updateAuthUI = function() {
+  if (origUpdate) origUpdate();
+  updateAdminUI();
+};
 </script>
 
 <style>
 .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
-.admin-card { background: var(--surface); border: 1px solid rgba(255,255,255,0.04); border-radius: var(--radius); padding: 32px; }
-.admin-card h4 { color: #fff; font-weight: 700; font-size: 1.1rem; margin-bottom: 4px; }
-.admin-login-card { background: var(--surface); border: 1px solid rgba(255,255,255,0.04); border-radius: var(--radius); padding: 40px; }
-.form-group { margin-bottom: 20px; }
-.form-group label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--txt); margin-bottom: 6px; }
-.form-input {
+.admin-card { padding: 32px; }
+.admin-card h4 { color: #fff; font-weight: 700; margin-bottom: 8px; }
+.admin-card p { color: var(--txt-muted); font-size: 0.85rem; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--txt); margin-bottom: 6px; }
+.form-input, .form-textarea {
   width: 100%; padding: 10px 14px; border-radius: var(--radius-xs);
-  background: rgba(0,0,0,0.3); border: 1px solid var(--line);
-  color: var(--txt); font-family: var(--mono); font-size: 0.85rem;
+  background: var(--bg-alt); border: 1px solid var(--line);
+  color: var(--txt); font-family: var(--mono); font-size: 0.9rem;
   transition: var(--transition); outline: none;
 }
-.form-input:focus { border-color: var(--accent-1); }
-.form-textarea { resize: vertical; min-height: 180px; }
-.admin-post-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); gap: 12px; }
-.admin-post-item:last-child { border-bottom: none; }
-.admin-post-info { min-width: 0; }
-.admin-post-title { font-size: 0.85rem; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
-.admin-post-meta { font-size: 0.7rem; color: var(--txt-muted); font-family: var(--mono); margin-top: 2px; }
+.form-input:focus, .form-textarea:focus { border-color: var(--accent); }
+.form-textarea { resize: vertical; min-height: 200px; }
 
-@media (max-width: 768px) { .admin-grid { grid-template-columns: 1fr; } }
+.admin-post-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 0; border-bottom: 1px solid var(--line);
+  gap: 12px;
+}
+.admin-post-item:last-child { border-bottom: none; }
+.admin-post-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.admin-post-title { font-size: 0.9rem; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-post-meta { font-size: 0.75rem; color: var(--txt-muted); font-family: var(--mono); }
+
+@media (max-width: 768px) {
+  .admin-grid { grid-template-columns: 1fr; }
+}
 </style>
 </body>
 </html>

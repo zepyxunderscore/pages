@@ -1,9 +1,13 @@
 // ─── Config ──────────────────────────────────────────────
 const CONFIG = {
   owner: 'xZepyx',
-  siteRepo: 'zepyx.github.io',
-  authRepo: 'tracker',
-  authFile: 'auth',
+  repo: 'zepyx.github.io',
+  blogRepo: 'xZepyx',
+  blogRepoName: 'blog',
+  // GitHub OAuth App client ID — replace with your own from https://github.com/settings/developers
+  clientId: 'YOUR_GITHUB_OAUTH_CLIENT_ID',
+  // Alternative: use a Personal Access Token for admin operations (simpler, no OAuth needed)
+  fallbackPat: null, // set to 'ghp_...' if you prefer PAT over OAuth
 }
 
 // ─── State ───────────────────────────────────────────────
@@ -18,6 +22,10 @@ const State = {
 const $ = (s, p = document) => p.querySelector(s)
 const $$ = (s, p = document) => [...p.querySelectorAll(s)]
 
+function html(strings, ...vals) {
+  return strings.reduce((r, s, i) => r + s + (vals[i] || ''), '')
+}
+
 function esc(str) {
   const d = document.createElement('div')
   d.textContent = str
@@ -26,7 +34,7 @@ function esc(str) {
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', {
-    year: 'numeric', month: 'long', day: 'numeric'
+    year: 'numeric', month: 'short', day: 'numeric'
   })
 }
 
@@ -42,84 +50,121 @@ function timeAgo(iso) {
   return formatDate(iso)
 }
 
-// ─── Auth: PAT-based push verification ──────────────────
-// Flow: enter PAT → push to xZepyx/tracker/auth → if push succeeds, admin
-// PAT is stored in localStorage only — never sent anywhere except GitHub API
+// ─── GitHub API ──────────────────────────────────────────
+const GH_API = 'https://api.github.com'
 
-function restoreSession() {
-  try {
-    const raw = localStorage.getItem('zepyx_token')
-    if (!raw) return false
-    State.token = raw
-    // Verify the token is still valid by checking user
-    return validateToken(raw)
-  } catch { return false }
+async function ghFetch(path, opts = {}) {
+  const headers = { Accept: 'application/vnd.github.v3+json', ...opts.headers }
+  if (State.token) headers.Authorization = `Bearer ${State.token}`
+  const res = await fetch(`${GH_API}${path}`, { ...opts, headers })
+  if (!res.ok) throw new Error(`GitHub API: ${res.status} ${res.statusText}`)
+  return res.json()
 }
 
-async function validateToken(token) {
-  try {
-    const res = await fetch('https://api.github.com/user', {
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github.v3+json' }
-    })
-    if (!res.ok) { logout(); return false }
-    const user = await res.json()
-    if (user.login !== CONFIG.owner) { logout(); return false }
-    State.user = user
-    State.isAdmin = true
-    updateAuthUI()
-    return true
-  } catch { logout(); return false }
-}
-
-async function verifyWithPush(token) {
-  // Try to push to xZepyx/tracker/auth to verify write access
-  const now = new Date()
-  const dateStr = now.toLocaleString('en-US', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit', second: '2-digit'
-  })
-  const content = `Authorized User Zepyx on ${dateStr}`
-  const encoded = btoa(content)
-
-  // First check if file exists to get SHA
-  let sha = null
-  try {
-    const check = await fetch(`https://api.github.com/repos/${CONFIG.owner}/${CONFIG.authRepo}/contents/${CONFIG.authFile}`, {
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github.v3+json' }
-    })
-    if (check.ok) {
-      const existing = await check.json()
-      sha = existing.sha
-    }
-  } catch {}
-
-  // Push the file
-  const body = {
-    message: `auth: ${CONFIG.owner} login at ${dateStr}`,
-    content: encoded,
+async function ghFetchAll(path, opts = {}) {
+  const items = []
+  let page = 1
+  while (true) {
+    const perPage = 100
+    const data = await ghFetch(`${path}${path.includes('?') ? '&' : '?'}per_page=${perPage}&page=${page}`, opts)
+    items.push(...data)
+    if (data.length < perPage) break
+    page++
   }
-  if (sha) body.sha = sha
+  return items
+}
 
+// ─── Auth (GitHub OAuth Device Flow) ────────────────────
+async function startDeviceFlow() {
   try {
-    const res = await fetch(`https://api.github.com/repos/${CONFIG.owner}/${CONFIG.authRepo}/contents/${CONFIG.authFile}`, {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/vnd.github.v3+json'
-      },
-      body: JSON.stringify(body)
+    const res = await fetch('https://github.com/login/device/code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ client_id: CONFIG.clientId, scope: 'repo,user' })
     })
-    if (!res.ok) {
-      const err = await res.json()
-      throw new Error(err.message || `HTTP ${res.status}`)
-    }
-    // Push succeeded — token has write access
-    State.token = token
-    localStorage.setItem('zepyx_token', token)
-    return await validateToken(token)
+    const data = await res.json()
+    if (!data.device_code) throw new Error('Failed to get device code')
+
+    // Show user code
+    const codeEl = document.getElementById('device-code')
+    const verifyEl = document.getElementById('device-verify')
+    const modal = document.getElementById('auth-modal')
+    if (codeEl) codeEl.textContent = data.user_code
+    if (verifyEl) verifyEl.href = data.verification_uri
+    if (modal) modal.classList.add('open')
+
+    // Poll for token
+    return await pollForToken(data.device_code, data.interval || 5)
   } catch (e) {
-    throw new Error(`Push failed: ${e.message}. Make sure the token has write access to ${CONFIG.owner}/${CONFIG.authRepo}.`)
+    console.error('Device flow error:', e)
+    throw e
+  }
+}
+
+async function pollForToken(deviceCode, interval) {
+  return new Promise((resolve, reject) => {
+    const poll = setInterval(async () => {
+      try {
+        const res = await fetch('https://github.com/login/oauth/access_token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            client_id: CONFIG.clientId,
+            device_code: deviceCode,
+            grant_type: 'urn:ietf:params:oauth:grant-type:device_code'
+          })
+        })
+        const data = await res.json()
+        if (data.access_token) {
+          clearInterval(poll)
+          resolve(data.access_token)
+        } else if (data.error === 'authorization_pending') {
+          // still waiting
+        } else if (data.error === 'slow_down') {
+          // increase interval
+        } else if (data.error === 'expired_token' || data.error === 'access_denied') {
+          clearInterval(poll)
+          reject(new Error(data.error_description || 'Auth cancelled'))
+        }
+      } catch (e) {
+        // retry
+      }
+    }, interval * 1000)
+  })
+}
+
+async function verifyAdmin(token) {
+  try {
+    const user = await ghFetch('/user', { headers: { Authorization: `Bearer ${token}` } })
+    if (user.login === CONFIG.owner) {
+      State.user = user
+      State.token = token
+      State.isAdmin = true
+      sessionStorage.setItem('gh_token', token)
+      sessionStorage.setItem('gh_user', JSON.stringify(user))
+      updateAuthUI()
+      return true
+    }
+    return false
+  } catch (e) {
+    console.error('Verify admin error:', e)
+    return false
+  }
+}
+
+function checkSession() {
+  const token = sessionStorage.getItem('gh_token')
+  const userRaw = sessionStorage.getItem('gh_user')
+  if (token && userRaw) {
+    try {
+      const user = JSON.parse(userRaw)
+      if (user.login === CONFIG.owner) {
+        State.user = user
+        State.token = token
+        State.isAdmin = true
+        updateAuthUI()
+      }
+    } catch {}
   }
 }
 
@@ -127,170 +172,258 @@ function logout() {
   State.user = null
   State.token = null
   State.isAdmin = false
-  localStorage.removeItem('zepyx_token')
+  sessionStorage.removeItem('gh_token')
+  sessionStorage.removeItem('gh_user')
   updateAuthUI()
 }
 
 function updateAuthUI() {
-  document.querySelectorAll('#login-btn, #admin-login-btn').forEach(el => {
-    if (el) el.textContent = State.isAdmin ? `@${State.user.login}` : 'Login'
-  })
-  document.querySelectorAll('#admin-link').forEach(el => {
-    if (el) el.style.display = State.isAdmin ? 'inline-flex' : 'none'
-  })
-  const badge = document.getElementById('user-badge')
-  if (badge) {
-    badge.innerHTML = State.isAdmin
-      ? `<img src="${State.user.avatar_url}" alt="" style="width:22px;height:22px;border-radius:50%"> <span style="font-size:0.8rem">${State.user.login}</span> <button onclick="logout()" style="background:none;border:none;color:var(--txt-muted);cursor:pointer;font-size:0.7rem;padding:2px">✕</button>`
-      : ''
+  const loginBtn = document.getElementById('login-btn')
+  const adminLink = document.getElementById('admin-link')
+  const userBadge = document.getElementById('user-badge')
+
+  if (State.isAdmin) {
+    if (loginBtn) loginBtn.innerHTML = `${State.user.login} ●`
+    if (adminLink) adminLink.style.display = 'flex'
+    if (userBadge) {
+      userBadge.innerHTML = `
+        <img src="${State.user.avatar_url}" alt="" style="width:24px;height:24px;border-radius:50%">
+        <span>${State.user.login}</span>
+        <button onclick="logout()" style="background:none;border:none;color:var(--txt-muted);cursor:pointer;font-size:0.75rem">✕</button>
+      `
+    }
+  } else {
+    if (loginBtn) loginBtn.innerHTML = 'Login'
+    if (adminLink) adminLink.style.display = 'none'
+    if (userBadge) userBadge.innerHTML = ''
   }
 }
 
 // ─── Blog (GitHub Issues CMS) ───────────────────────────
 async function getBlogPosts() {
   try {
-    const res = await fetch(`https://api.github.com/repos/${CONFIG.owner}/${CONFIG.siteRepo}/issues?state=open&sort=created&direction=desc&labels=blog&per_page=50`)
-    if (!res.ok) throw new Error('fail')
-    const issues = await res.json()
-    return issues.filter(i => !i.pull_request)
-  } catch { return [] }
+    const issues = await ghFetchAll(`/repos/${CONFIG.blogRepo}/${CONFIG.blogRepoName}/issues?state=open&sort=created&direction=desc`)
+    return issues.filter(i => !i.pull_request && i.labels.some(l => l.name === 'blog'))
+  } catch {
+    // Fallback: try reading from this repo
+    try {
+      const issues = await ghFetchAll(`/repos/${CONFIG.owner}/${CONFIG.repo}/issues?state=open&sort=created&direction=desc&labels=blog`)
+      return issues.filter(i => !i.pull_request)
+    } catch {
+      return []
+    }
+  }
 }
 
 async function getBlogPost(number) {
   try {
-    const res = await fetch(`https://api.github.com/repos/${CONFIG.owner}/${CONFIG.siteRepo}/issues/${number}`)
-    if (!res.ok) throw new Error('not found')
-    const issue = await res.json()
-    if (issue.pull_request) return null
-    return issue
-  } catch { return null }
+    return await ghFetch(`/repos/${CONFIG.blogRepo}/${CONFIG.blogRepoName}/issues/${number}`)
+  } catch {
+    try {
+      return await ghFetch(`/repos/${CONFIG.owner}/${CONFIG.repo}/issues/${number}`)
+    } catch {
+      return null
+    }
+  }
 }
 
 function renderBlogCard(issue) {
   const labelTags = issue.labels
     .filter(l => l.name !== 'blog')
     .map(l => `<span class="tag">${esc(l.name)}</span>`).join('')
+
   const body = issue.body || ''
-  const excerpt = body.replace(/[#*`>\[\]]/g, '').slice(0, 160).trim()
-  const date = formatDate(issue.created_at)
-  return `
-    <a href="/blog/post.html?id=${issue.number}" class="blog-card">
-      <div class="blog-card-meta">
-        <span>${date}</span>
-        ${issue.comments > 0 ? `<span>💬 ${issue.comments}</span>` : ''}
+  const excerpt = body.replace(/[#*`>\[\]]/g, '').slice(0, 200).trim()
+
+  return html`
+    <a href="/blog/post.html?id=${issue.number}" class="blog-card glass">
+      <div class="blog-card-header">
+        <div class="blog-card-meta">
+          <span class="blog-date">${timeAgo(issue.created_at)}</span>
+          ${issue.comments > 0 ? html`<span class="blog-comments">💬 ${issue.comments}</span>` : ''}
+          ${issue.reactions?.['+1'] ? html`<span class="blog-reactions">👍 ${issue.reactions['+1']}</span>` : ''}
+        </div>
+        ${labelTags ? html`<div class="blog-tags">${labelTags}</div>` : ''}
       </div>
       <h3 class="blog-card-title">${esc(issue.title)}</h3>
       <p class="blog-card-excerpt">${esc(excerpt)}</p>
-      <div class="blog-card-foot">
-        ${labelTags}
-        <span class="blog-card-arrow">→</span>
+      <div class="blog-card-footer">
+        <span class="blog-readmore">Read more →</span>
       </div>
     </a>
   `
 }
 
-// ─── Markdown ────────────────────────────────────────────
-function renderMarkdown(md) {
-  if (!md) return ''
-  let h = esc(md)
-  // code blocks (must come first)
-  h = h.replace(/```(\w*)\s*([\s\S]*?)```/g, (_, lang, code) => `<pre><code>${esc(code)}</code></pre>`)
-  h = h.replace(/`([^`]+)`/g, '<code>$1</code>')
-  h = h.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy">')
-  h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
-  h = h.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
-  h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-  h = h.replace(/\*(.+?)\*/g, '<em>$1</em>')
-  h = h.replace(/^###### (.+)/gm, '<h6>$1</h6>')
-  h = h.replace(/^##### (.+)/gm, '<h5>$1</h5>')
-  h = h.replace(/^#### (.+)/gm, '<h4>$1</h4>')
-  h = h.replace(/^### (.+)/gm, '<h3>$1</h3>')
-  h = h.replace(/^## (.+)/gm, '<h2>$1</h2>')
-  h = h.replace(/^# (.+)/gm, '<h1>$1</h1>')
-  h = h.replace(/^&gt; (.+)/gm, '<blockquote>$1</blockquote>')
-  h = h.replace(/^---+/gm, '<hr>')
-  // wrap consecutive list items
-  h = h.replace(/((?:^- .+\n?)+)/gm, '<ul>$&</ul>')
-  h = h.replace(/^- (.+)/gm, '<li>$1</li>')
-  // paragraphs
-  h = '<p>' + h.replace(/\n\n/g, '</p><p>') + '</p>'
-  h = h.replace(/<p><\/p>/g, '')
-  h = h.replace(/<li><\/li>/g, '')
-  return h
+async function renderBlogPost(postEl, post) {
+  if (!post) {
+    postEl.innerHTML = '<div style="text-align:center;padding:80px 0"><h2>Post not found</h2><a href="/blog/" class="btn btn-ghost" style="margin-top:20px">← Back to blog</a></div>'
+    return
+  }
+
+  const labelTags = post.labels
+    .filter(l => l.name !== 'blog')
+    .map(l => `<span class="tag">${esc(l.name)}</span>`).join('')
+
+  // Convert markdown to HTML (simple approach)
+  const md = post.body || ''
+  const bodyHtml = renderMarkdown(md)
+
+  postEl.innerHTML = html`
+    <div class="post-header">
+      <a href="/blog/" class="post-back">← Back to blog</a>
+      <div class="post-meta">
+        <span>${formatDate(post.created_at)}</span>
+        ${post.updated_at !== post.created_at ? html`<span class="post-updated">(updated ${formatDate(post.updated_at)})</span>` : ''}
+        <span>by ${esc(post.user?.login || 'unknown')}</span>
+      </div>
+      ${labelTags ? html`<div class="post-tags">${labelTags}</div>` : ''}
+      <h1 class="post-title">${esc(post.title)}</h1>
+    </div>
+    <div class="post-body">${bodyHtml}</div>
+    <div class="post-reactions">
+      <h3>Reactions</h3>
+      <div class="reaction-bar">
+        ${['👍','👎','😄','🎉','❤️','🚀','👀'].map(r => {
+          const key = { '👍':'+1', '👎':'-1', '😄':'laugh', '🎉':'hooray', '❤️':'heart', '🚀':'rocket', '👀':'eyes' }[r]
+          const count = post.reactions?.[key] || 0
+          return html`<button class="reaction-btn" data-reaction="${key}">${r} <span>${count}</span></button>`
+        }).join('')}
+      </div>
+      <p style="color:var(--txt-muted);font-size:0.85rem;margin-top:8px">${post.reactions?.total_count || 0} total · <a href="${post.html_url}" target="_blank">React on GitHub</a></p>
+    </div>
+    <div class="post-comments">
+      <h3>Comments (${post.comments})</h3>
+      <div id="giscus-comments"></div>
+    </div>
+  `
+
+  // Add giscus
+  loadGiscus(post.html_url)
 }
 
-// ─── Discussions ────────────────────────────────────────
+function renderMarkdown(md) {
+  if (!md) return ''
+  let html = esc(md) // escape first, then re-markup
+    .replace(/&gt;/g, '>') // undo escape on blockquotes
+
+  // Code blocks
+  html = html.replace(/```(\w*)\s*([\s\S]*?)```/g, (_, lang, code) => {
+    return `<pre><code class="lang-${lang}">${esc(code)}</code></pre>`
+  })
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
+  // Images
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy">')
+  // Links
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+  // Bold + italic
+  html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
+  // Headings
+  html = html.replace(/^###### (.+)/gm, '<h6>$1</h6>')
+  html = html.replace(/^##### (.+)/gm, '<h5>$1</h5>')
+  html = html.replace(/^#### (.+)/gm, '<h4>$1</h4>')
+  html = html.replace(/^### (.+)/gm, '<h3>$1</h3>')
+  html = html.replace(/^## (.+)/gm, '<h2>$1</h2>')
+  html = html.replace(/^# (.+)/gm, '<h1>$1</h1>')
+  // Blockquotes
+  html = html.replace(/^&gt; (.+)/gm, '<blockquote>$1</blockquote>')
+  // Horizontal rules
+  html = html.replace(/^---+/gm, '<hr>')
+  // Lists
+  html = html.replace(/^- (.+)/gm, '<li>$1</li>')
+  // Paragraphs
+  html = html.replace(/\n\n/g, '</p><p>')
+  html = '<p>' + html + '</p>'
+
+  // Clean up nesting
+  html = html.replace(/<li><\/li>/g, '')
+  html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+
+  return html
+}
+
+function loadGiscus(issueUrl) {
+  const container = document.getElementById('giscus-comments')
+  if (!container) return
+
+  container.innerHTML = ''
+  const script = document.createElement('script')
+  script.src = 'https://giscus.app/client.js'
+  script.setAttribute('data-repo', `${CONFIG.owner}/${CONFIG.repo}`)
+  script.setAttribute('data-repo-id', '')
+  script.setAttribute('data-category', 'Announcements')
+  script.setAttribute('data-category-id', '')
+  script.setAttribute('data-mapping', 'specific')
+  script.setAttribute('data-term', issueUrl)
+  script.setAttribute('data-strict', '0')
+  script.setAttribute('data-reactions-enabled', '1')
+  script.setAttribute('data-emit-metadata', '0')
+  script.setAttribute('data-input-position', 'top')
+  script.setAttribute('data-theme', 'dark')
+  script.setAttribute('data-lang', 'en')
+  script.setAttribute('crossorigin', 'anonymous')
+  script.async = true
+  container.appendChild(script)
+}
+
+// ─── Community (Discussions) ────────────────────────────
 async function getDiscussions() {
   try {
-    const headers = { Accept: 'application/vnd.github.v3+json' }
-    if (State.token) headers.Authorization = `Bearer ${State.token}`
-    const res = await fetch(`https://api.github.com/repos/${CONFIG.owner}/${CONFIG.siteRepo}/discussions?per_page=20`, { headers })
-    if (res.ok) {
-      const data = await res.json()
-      return { type: 'rest', data }
-    }
-    return { type: 'error', error: 'Discussions API unavailable. Enable Discussions in repo settings.' }
-  } catch (e) {
-    return { type: 'error', error: e.message }
+    const data = await ghFetch(`/repos/${CONFIG.owner}/${CONFIG.repo}/discussions?per_page=20`)
+    return data || []
+  } catch {
+    return []
   }
 }
 
 function renderDiscussionCard(d) {
-  const body = (d.bodyText || d.body || '').slice(0, 140)
-  const date = formatDate(d.createdAt || d.created_at)
-  const comments = d.comments?.totalCount ?? d.comments ?? 0
-  const upvotes = d.upvoteCount ?? d.upvote_count ?? 0
-  const url = d.url || d.html_url
-  const author = d.author?.login || d.user?.login || 'unknown'
-  return `
-    <a href="${url}" target="_blank" class="disc-card">
-      <div class="disc-card-top">
-        <span class="disc-card-author">${esc(author)}</span>
-        <span class="disc-card-date">${date}</span>
+  const answers = d.answers || 0
+  const comments = d.comments || 0
+  const labels = (d.labels || []).map(l => `<span class="tag">${esc(l.name)}</span>`).join('')
+
+  return html`
+    <a href="${d.html_url}" target="_blank" class="disc-card glass">
+      <div class="disc-card-header">
+        <span class="disc-author">${esc(d.user?.login || 'unknown')}</span>
+        <span class="disc-date">${timeAgo(d.created_at)}</span>
       </div>
-      <h4 class="disc-card-title">${esc(d.title)}</h4>
-      <p class="disc-card-body">${esc(body)}</p>
-      <div class="disc-card-bottom">
-        <span class="disc-card-stats">💬 ${comments} · 👍 ${upvotes}</span>
+      <h4 class="disc-title">${esc(d.title)}</h4>
+      <p class="disc-body">${esc((d.body || '').replace(/[#*`>]/g, '').slice(0, 150))}</p>
+      <div class="disc-card-footer">
+        <span>💬 ${comments} comments</span>
+        ${answers > 0 ? html`<span class="disc-answered">✅ ${answers} answers</span>` : ''}
+        <span class="disc-upvotes">👍 ${d.upvote_count || 0}</span>
       </div>
     </a>
   `
 }
 
-// ─── Animations ──────────────────────────────────────────
-function observeAnimations() {
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible')
-        observer.unobserve(entry.target)
-      }
-    })
-  }, { threshold: 0.1, rootMargin: '0px 0px -60px 0px' })
-  document.querySelectorAll('.fade-in, .fade-in-stagger').forEach(el => observer.observe(el))
-}
-
 // ─── Init ────────────────────────────────────────────────
 function init() {
-  restoreSession()
+  checkSession()
 
   // Cursor
   const cur = document.getElementById('cursor')
-  if (cur) {
+  const fol = document.getElementById('cursor-follower')
+  if (cur && fol) {
     document.addEventListener('mousemove', e => {
       cur.style.left = e.clientX + 'px'
       cur.style.top = e.clientY + 'px'
-    })
-    document.querySelectorAll('a, button, .blog-card, .disc-card, .project-card, .sub-card').forEach(el => {
-      el.addEventListener('mouseenter', () => cur.classList.add('hover'))
-      el.addEventListener('mouseleave', () => cur.classList.remove('hover'))
+      setTimeout(() => {
+        fol.style.left = (e.clientX - 16) + 'px'
+        fol.style.top = (e.clientY - 16) + 'px'
+      }, 50)
     })
   }
 
   // Nav scroll
   const nav = document.querySelector('nav')
   if (nav) {
-    window.addEventListener('scroll', () => nav.classList.toggle('scrolled', window.scrollY > 80), { passive: true })
+    window.addEventListener('scroll', () => {
+      nav.classList.toggle('scrolled', window.scrollY > 50)
+    })
   }
 
   // Hamburger
@@ -298,21 +431,60 @@ function init() {
   const links = document.querySelector('.nav-links')
   if (ham && links) {
     ham.addEventListener('click', () => links.classList.toggle('open'))
-    links.querySelectorAll('a').forEach(a => a.addEventListener('click', () => links.classList.remove('open')))
+    links.querySelectorAll('a').forEach(a => {
+      a.addEventListener('click', () => links.classList.remove('open'))
+    })
+  }
+
+  // Login button
+  const loginBtn = document.getElementById('login-btn')
+  if (loginBtn) {
+    loginBtn.addEventListener('click', async () => {
+      if (State.isAdmin) {
+        logout()
+        return
+      }
+      try {
+        loginBtn.textContent = 'Connecting...'
+        const token = await startDeviceFlow()
+        const verified = await verifyAdmin(token)
+        if (!verified) {
+          alert('Access denied. Only the admin can log in.')
+          logout()
+        }
+      } catch (e) {
+        alert('Authentication failed: ' + e.message)
+        loginBtn.textContent = 'Login'
+      }
+    })
+  }
+
+  // Close auth modal
+  const closeModal = document.getElementById('close-auth-modal')
+  if (closeModal) {
+    closeModal.addEventListener('click', () => {
+      document.getElementById('auth-modal')?.classList.remove('open')
+    })
   }
 
   // Loader
   const loader = document.getElementById('loader')
   const main = document.getElementById('main-content')
   if (loader && main) {
-    setTimeout(() => { loader.classList.add('hidden'); main.classList.add('visible') }, 1000)
+    setTimeout(() => {
+      loader.classList.add('hidden')
+      main.classList.add('visible')
+    }, 2000)
   } else if (main) {
     main.classList.add('visible')
   }
 
-  observeAnimations()
   State.ready = true
 }
 
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init)
-else init()
+// ─── Fire ────────────────────────────────────────────────
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init)
+} else {
+  init()
+}
