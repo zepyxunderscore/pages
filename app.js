@@ -71,8 +71,26 @@ async function validateToken(token) {
   } catch { logout(); return false }
 }
 
+async function fetchWithTimeout(url, opts = {}, timeout = 12000) {
+  const ac = new AbortController()
+  const id = setTimeout(() => ac.abort(), timeout)
+  try {
+    const res = await fetch(url, { ...opts, signal: ac.signal })
+    return res
+  } finally {
+    clearTimeout(id)
+  }
+}
+
 async function verifyWithPush(token) {
-  // Try to push to xZepyx/tracker/auth to verify write access
+  // First validate the token works and user is xZepyx
+  const userRes = await fetchWithTimeout('https://api.github.com/user', {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github.v3+json' }
+  })
+  if (!userRes.ok) throw new Error('Token invalid or expired. Generate a new one at github.com/settings/tokens')
+  const userData = await userRes.json()
+  if (userData.login !== CONFIG.owner) throw new Error(`Token belongs to @${userData.login}, not @${CONFIG.owner}`)
+
   const now = new Date()
   const dateStr = now.toLocaleString('en-US', {
     day: '2-digit', month: '2-digit', year: 'numeric',
@@ -80,47 +98,63 @@ async function verifyWithPush(token) {
   })
   const content = `Authorized User Zepyx on ${dateStr}`
   const encoded = btoa(content)
+  const commitMsg = `auth: ${CONFIG.owner} login at ${dateStr}`
 
-  // First check if file exists to get SHA
-  let sha = null
-  try {
-    const check = await fetch(`https://api.github.com/repos/${CONFIG.owner}/${CONFIG.authRepo}/contents/${CONFIG.authFile}`, {
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github.v3+json' }
-    })
-    if (check.ok) {
-      const existing = await check.json()
-      sha = existing.sha
+  // Try tracker repo first, fallback to site repo
+  const targets = [
+    { owner: CONFIG.owner, repo: CONFIG.authRepo, path: CONFIG.authFile },
+    { owner: CONFIG.owner, repo: CONFIG.siteRepo, path: '.auth/allow' },
+  ]
+
+  let lastErr = null
+  for (const t of targets) {
+    try {
+      // Check if file exists (get SHA for update)
+      let sha = null
+      const check = await fetchWithTimeout(`https://api.github.com/repos/${t.owner}/${t.repo}/contents/${t.path}`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github.v3+json' }
+      })
+      if (check.ok) {
+        const existing = await check.json()
+        sha = existing.sha
+      } else if (check.status === 404) {
+        // repo or file doesn't exist, will be created
+      } else if (check.status === 403) {
+        throw new Error(`Access denied to ${t.owner}/${t.repo}. Check token permissions.`)
+      }
+
+      const body = { message: commitMsg, content: encoded }
+      if (sha) body.sha = sha
+
+      const pushRes = await fetchWithTimeout(`https://api.github.com/repos/${t.owner}/${t.repo}/contents/${t.path}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/vnd.github.v3+json'
+        },
+        body: JSON.stringify(body)
+      })
+
+      if (pushRes.ok) {
+        // Push succeeded — token has write access
+        State.token = token
+        localStorage.setItem('zepyx_token', token)
+        return await validateToken(token)
+      }
+
+      const errData = await pushRes.json()
+      lastErr = errData.message || `HTTP ${pushRes.status}`
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        lastErr = `Request timed out to ${t.owner}/${t.repo}`
+      } else {
+        lastErr = e.message
+      }
     }
-  } catch {}
-
-  // Push the file
-  const body = {
-    message: `auth: ${CONFIG.owner} login at ${dateStr}`,
-    content: encoded,
   }
-  if (sha) body.sha = sha
 
-  try {
-    const res = await fetch(`https://api.github.com/repos/${CONFIG.owner}/${CONFIG.authRepo}/contents/${CONFIG.authFile}`, {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/vnd.github.v3+json'
-      },
-      body: JSON.stringify(body)
-    })
-    if (!res.ok) {
-      const err = await res.json()
-      throw new Error(err.message || `HTTP ${res.status}`)
-    }
-    // Push succeeded — token has write access
-    State.token = token
-    localStorage.setItem('zepyx_token', token)
-    return await validateToken(token)
-  } catch (e) {
-    throw new Error(`Push failed: ${e.message}. Make sure the token has write access to ${CONFIG.owner}/${CONFIG.authRepo}.`)
-  }
+  throw new Error(`Push verification failed: ${lastErr}`)
 }
 
 function logout() {
@@ -194,7 +228,7 @@ function renderMarkdown(md) {
   if (!md) return ''
   let h = esc(md)
   // code blocks (must come first)
-  h = h.replace(/```(\w*)\s*([\s\S]*?)```/g, (_, lang, code) => `<pre><code>${esc(code)}</code></pre>`)
+  h = h.replace(/```(\w*)\s*([\s\S]*?)```/g, (_, lang, code) => `<pre><code>${code}</code></pre>`)
   h = h.replace(/`([^`]+)`/g, '<code>$1</code>')
   h = h.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy">')
   h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
