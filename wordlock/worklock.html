@@ -1,0 +1,150 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Wordlock — Exam Vocabulary</title>
+<style>
+:root{--bg:#f6f4fa;--c:#fff;--hd:#5b3fa6;--hdt:#fff;--t:#1d1b20;--m:#625b71;--a:#5b3fa6;--at:#fff;--b:#e7e0ec;--ok:#1b7f55;--okb:#dff3e8;--no:#b3261e;--nob:#f9dedc;--el:0 1px 3px rgba(0,0,0,.2),0 1px 2px rgba(0,0,0,.12)}
+[data-theme=dark]{--bg:#111214;--c:#1b1c1f;--hd:#1b1c1f;--hdt:#ececec;--t:#ececec;--m:#9a9ca3;--a:#4fd1a5;--at:#06231a;--b:#2b2d32;--ok:#4fd1a5;--okb:#15302a;--no:#f27878;--nob:#34201f;--el:none}
+[data-theme=black]{--bg:#000;--c:#0b0b0c;--hd:#0b0b0c;--hdt:#e8e8e8;--t:#e8e8e8;--m:#8d8f96;--a:#4fd1a5;--at:#06231a;--b:#1f2024;--ok:#4fd1a5;--okb:#0f2a23;--no:#f27878;--nob:#2b1717;--el:none}
+[data-theme=paper]{--bg:#efe6d0;--c:#fbf6e9;--hd:#5b4636;--hdt:#fbf6e9;--t:#2e2418;--m:#7d6c58;--a:#8a5a2b;--at:#fff;--b:#e4d8bb;--ok:#3f7d4e;--okb:#e2edd9;--no:#b8432f;--nob:#f6e0d8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:16px/1.5 Roboto,"Segoe UI",system-ui,sans-serif}
+button{position:relative;overflow:hidden;font:inherit;-webkit-tap-highlight-color:transparent}
+.hd{position:sticky;top:0;z-index:5;background:var(--hd);color:var(--hdt);height:58px;padding:0 8px;display:flex;align-items:center;justify-content:space-between;gap:8px;box-shadow:var(--el)}.hd b{font-size:20px;font-weight:500}
+.hd button,.link{background:none;border:0;color:inherit;font-size:18px;cursor:pointer;min-width:42px;height:42px;border-radius:50%;padding:0 8px}.link{color:var(--a);font-size:16px;border-radius:8px}.hd .sm{padding-right:10px}
+.wrap{max-width:560px;margin:0 auto;padding:12px}.m{color:var(--m)}.sm{font-size:13px}
+.sheet,.card{background:var(--c);border-radius:16px;box-shadow:var(--el);border:1px solid var(--b);overflow:hidden;margin:12px 0}.card{padding:0}.card>.row,.card>.m,.card>textarea{margin:16px}
+.li{display:flex;align-items:center;gap:16px;width:100%;padding:12px 16px;background:none;border:0;border-bottom:1px solid var(--b);text-align:left;color:var(--t);cursor:pointer}.li:last-child{border:0}.li:hover{background:var(--bg)}
+.av{flex:none;width:42px;height:42px;border-radius:50%;background:var(--a);color:var(--at);display:grid;place-items:center;font-weight:700}.av.dn{background:var(--ok);color:#fff}
+.tx{flex:1;min-width:0}.tx small{display:block;color:var(--m)}.bar{display:block;height:6px;background:var(--b);border-radius:9px;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--ok);transition:width .3s}
+.top{text-align:center;padding:14px;border-bottom:1px solid var(--b)}.tt{font-weight:700;color:var(--m)}.ss{font-size:13px;color:var(--m)}
+.word{font-size:30px;font-weight:800;padding:20px 20px 14px;display:flex;align-items:center;gap:10px}.word i{font-size:14px;font-weight:400;color:var(--m)}
+.opt{display:flex;align-items:flex-start;gap:14px;width:calc(100% - 28px);margin:10px 14px;text-align:left;background:var(--c);border:2px solid color-mix(in srgb,var(--m) 35%,var(--c));border-radius:14px;color:var(--t);padding:14px 16px;cursor:pointer;font-size:17px;line-height:1.5;font-weight:500}
+.opt:hover,.opt:focus-visible{border-color:var(--a);background:color-mix(in srgb,var(--a) 10%,var(--c))}.sheet .opt:last-child{margin-bottom:16px}
+.ol{flex:none;width:30px;height:30px;border-radius:50%;background:var(--a);color:var(--at);display:grid;place-items:center;font-weight:700;font-size:15px}.ot{flex:1;overflow-wrap:anywhere}
+.ban{padding:12px 20px;text-align:center}.ban b{display:block;font-size:18px}.ban.ok{background:var(--okb);color:var(--ok)}.ban.no{background:var(--nob);color:var(--no)}
+.ln{padding:12px 20px;border-top:1px solid var(--b)}.ln.ok{color:var(--ok);font-weight:600}.ln.no{color:var(--no)}.ex{padding:4px 20px 14px;font-style:italic;color:var(--m)}.ex b{color:var(--t)}
+.chips{padding:0 20px 14px}.chip{display:inline-block;background:var(--bg);border:1px solid var(--b);border-radius:8px;padding:2px 10px;margin:2px 4px 2px 0;font-size:13px}
+.prog{padding:14px 20px;border-top:1px solid var(--b)}.next,.btn{display:block;width:100%;border:0;background:var(--a);color:var(--at);font-weight:500;letter-spacing:.04em;padding:16px;cursor:pointer}.btn{border-radius:24px;margin:12px 0 0}.btn.g{background:var(--bg);color:var(--t)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.set{padding:14px 16px;border-bottom:1px solid var(--b)}
+select,textarea{background:var(--bg);color:var(--t);border:1px solid var(--b);border-radius:8px;padding:6px;font:inherit}textarea{width:calc(100% - 32px);min-height:80px;font:12px monospace}.card>.btn{width:calc(100% - 32px);margin:12px 16px}
+.rip{position:absolute;border-radius:50%;background:currentColor;opacity:.2;transform:scale(0);animation:rp .6s ease-out;pointer-events:none}@keyframes rp{to{transform:scale(1);opacity:0}}
+</style></head><body><div id="app"></div><script>
+const $=document.getElementById('app'),DM='https://api.datamuse.com/words',FD='https://api.dictionaryapi.dev/api/v2/entries/en/';
+const ld=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
+const sv=()=>{try{localStorage.setItem('wl3',JSON.stringify(S))}catch(e){}};
+let S=Object.assign({m:{},st:{},info:{},cfg:{}},ld('wl3',{}));
+const DF={theme:'light',gap:'normal',cap:500,band:'mid',streak:3,size:20,td:1,ts:1,ta:1,sp:0};let C=Object.assign({},DF,S.cfg);
+const th=()=>document.documentElement.dataset.theme=C.theme=='auto'?(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'):C.theme;th();
+const WL=`a abandon abate abdicate aberration abhor abject abrupt absolve abstain abstruse acquiesce acrimony adamant adept admonish adroit adulation affable affluent alacrity alleviate aloof altruism ambiguous ameliorate amiable anomaly apathy appease arbitrary arduous ascertain assuage astute audacious austere aversion
+b banal belligerent benevolent benign bewilder blatant bolster brevity brittle bucolic burgeon bustle barren blithe
+c cacophony candid capricious castigate censure circumspect clandestine coerce cogent complacent concise condone conspicuous contemptuous copious corroborate credulous cryptic cumbersome cursory callous catalyst compassion
+d dearth debase decorum deference deleterious demur denigrate deride despondent destitute deter diffident digress diligent discern disparage dissent diverse dogmatic dormant dubious docile
+e eccentric eclectic efface eloquent elusive embezzle emulate enigma ephemeral equivocal erudite esoteric euphemism exacerbate exonerate expedient extol evade eminent endeavor eradicate
+f facile fallacy fastidious feeble feign fervent fickle flagrant flourish fortuitous frugal futile fraught fugitive
+g garrulous gregarious gullible guile genial gratuitous grueling gist grandiose
+h haughty hackneyed hapless harbinger hostile hypocrisy hamper heretic hinder humble
+i idle illicit immaculate impartial impetuous implicit inane incessant indigent indolent inept innocuous insipid intrepid irate irascible impeccable imminent inevitable impede ignominy incite integrity
+j jaded jovial jubilant judicious jeopardy
+k kindle keen knack kudos
+l laconic languid laud lavish lethargic loquacious lucid lucrative lenient listless lament
+m magnanimous malevolent malign meager meticulous mitigate mundane munificent myriad mediocre meander modest morose multifarious mutiny
+n nadir naive nefarious nonchalant novice noxious notorious nurture
+o obdurate oblivious obscure obsolete obstinate ominous opulent ostentatious oust overt obsequious onerous omniscient
+p pacify paradox pedantic penchant perfidy pernicious placid pragmatic prodigal profuse prudent pugnacious pensive perilous perplex pious plausible precarious prevalent prolific pristine propitious procrastinate
+q quaint quell querulous quixotic quarrel
+r rancor rebuke recalcitrant reclusive refute relinquish reproach reticent rescind resilient reverent rhetoric robust rudimentary ruthless rampant reluctant repudiate
+s sagacious sanguine scant scrupulous serene shrewd skeptical solemn sporadic stoic stringent superfluous surreptitious sycophant sever sluggish sincere subtle succinct sullen spurious squander stagnant stern stupor strife supple
+t taciturn tenacious tenuous timid transient trepidation trite truculent tranquil tedious thrifty tardy tangible turbulent
+u ubiquitous unanimous unscrupulous urbane usurp utopian unkempt uncouth
+v vacillate vague valiant venerate verbose vex vigilant vindicate virulent vivid volatile vulnerable vigor vengeance
+w wane wary whimsical wily wrath wither waive wretched
+x xenophobia xenial
+y yearn yield yoke
+z zealous zenith zephyr zany`,W={};WL.split('\n').forEach(l=>{const[a,...r]=l.split(' ');W[a]=r});
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const shuf=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const q=async u=>{try{const r=await fetch(u);return r.ok?await r.json():[]}catch(e){return[]}};
+const uq=a=>[...new Set(a.map(x=>String(x).toLowerCase()).filter(x=>/^[a-z-]+$/.test(x)))];
+async function info(w){if(S.info[w])return S.info[w];const j=await q(FD+w),e=Array.isArray(j)?j[0]:null,o={d:'',p:'',e:'',s:[],a:[],au:''};
+ if(e){const ms=e.meanings||[];if(ms[0]){o.p=ms[0].partOfSpeech;o.d=ms[0].definitions[0].definition}
+  o.s=ms.flatMap(m=>[...(m.synonyms||[]),...m.definitions.flatMap(d=>d.synonyms||[])]);o.a=ms.flatMap(m=>[...(m.antonyms||[]),...m.definitions.flatMap(d=>d.antonyms||[])]);
+  o.e=(ms.flatMap(m=>m.definitions).find(d=>d.example)||{}).example||'';o.au=((e.phonetics||[]).find(p=>p.audio)||{}).audio||''}
+ if(o.s.length<3||o.a.length<1||!o.d){const[s,a,d]=await Promise.all([q(`${DM}?rel_syn=${w}&max=6`),q(`${DM}?rel_ant=${w}&max=4`),o.d?[]:q(`${DM}?sp=${w}&md=d&max=1`)]);
+  o.s.push(...s.map(x=>x.word));o.a.push(...a.map(x=>x.word));const df=d[0]&&d[0].defs&&d[0].defs[0];if(df){o.d=df.split('\t')[1];o.p=({n:'noun',v:'verb',adj:'adjective',adv:'adverb'})[df.split('\t')[0]]||''}}
+ o.s=uq(o.s).filter(x=>x!=w).slice(0,6);o.a=uq(o.a).filter(x=>x!=w).slice(0,4);if(o.d)S.info[w]=o;return o}
+const shell=(h,b)=>{$.innerHTML=`<div class="hd">${h}</div><div class="wrap">${b}</div>`;scrollTo(0,0)};
+const BANDS={easy:[3,80],mid:[.3,40],hard:[.1,10],exam:[.05,4]},MEM={},P=l=>MEM[l]||(MEM[l]=ld('wp'+l,null));
+const BAD=/plural of|past tense|past participle|participle of|alternative (form|spelling)|variant (of|spelling)|misspelling|abbreviation|surname|given name|a town|a city|a river|capital of|a genus/i;
+const words=l=>{const cur=W[l]||[],cs=new Set(cur),[lo,hi]=BANDS[C.band];return[...cur,...(P(l)||[]).filter(x=>!cs.has(x[0])&&x[1]>=lo&&x[1]<=hi).sort((a,b)=>b[1]-a[1]).map(x=>x[0])].slice(0,C.cap)};
+async function ensure(l){if(P(l))return;shell(`<b>Building letter ${l.toUpperCase()}</b>`,`<div class="card"><div class="m">Fetching more words from the free Datamuse API (one-time, then cached).<div class="bar"><i id="pg" style="width:4%"></i></div></div></div>`);
+ const jobs=[...'abcdefghijklmnopqrstuvwxyz'].map(x=>`${DM}?sp=${l}${x}*&md=df&max=300`),m=new Map();let n=0;
+ await Promise.all(jobs.map(async u=>{(await q(u)).forEach(o=>{if(!/^[a-z]{5,14}$/.test(o.word)||!o.defs||!o.defs.some(d=>!BAD.test(d)))return;const f=+((o.tags||[]).find(t=>t[0]=='f')||'f:0').slice(2);if(f>=.05&&f<=80)m.set(o.word,[o.word,f])});const g=document.getElementById('pg');if(g)g.style.width=++n/jobs.length*100+'%'}));
+ const a=[...m.values()].sort((x,y)=>y[1]-x[1]).slice(0,2000);MEM[l]=a;if(a.length>50)try{localStorage.setItem('wp'+l,JSON.stringify(a))}catch(e){}}
+const sets=l=>{const w=words(l),o=[];for(let i=0;i<w.length;i+=C.size)o.push(w.slice(i,i+C.size));if(o.length>1&&o[o.length-1].length<C.size/2)o[o.length-2].push(...o.pop());return o};
+const lk=w=>S.m[w],pct=(a,b)=>b?a/b*100:0;
+const cl=x=>String(x).replace(/^\((?:in|di)?transitive\)\s*/i,''),INT=[1,3,7,14,30,60],GAP=[5,9,15,24],GM={tight:.7,normal:1,wide:1.6};
+const due=w=>{const m=S.m[w];return m&&m.t&&Date.now()>m.t+INT[Math.min(m.l||0,5)]*864e5};
+const mig=()=>{for(const w in S.m)if(S.m[w]===1)S.m[w]={l:0,t:Date.now()}};mig();
+const mk=o=>{const q=Object.assign({st:{},dn:{},first:{},seen:{},lapsed:{},cur:null,step:0,phase:'learn',miss:[],rt:null,fq:[],qu:[],last:null,need:C.streak},o);
+ o.ws.forEach(w=>{const p=S.st[w]||{};q.st[w]={n:p.n||0,lap:p.lap||0,c:o.rv?0:Math.min(p.c||0,q.need-1)};if(!o.rv&&lk(w))q.dn[w]=1});
+ if(o.rv)q.qu=shuf(o.ws);else{const U=shuf(o.ws.filter(w=>!q.dn[w]&&!q.st[w].n)),R=o.ws.filter(w=>!q.dn[w]&&q.st[w].n).sort((a,b)=>q.st[a].c-q.st[b].c||q.st[b].lap-q.st[a].lap);
+  while(U.length||R.length){if(R.length)q.qu.push(R.shift());for(let k=0;k<2&&U.length;k++)q.qu.push(U.shift())}}return q};
+function home(){Q=null;const dueN=Object.keys(S.m).filter(due).length,Ls=Object.keys(W),T=Ls.map(words),all=T.flat(),k=all.filter(lk).length;
+ shell(`<b>Wordlock</b><button onclick="settings()">⚙</button>`,`<div class="card"><div class="row"><b>${k} of ${all.length} words mastered</b><span class="m sm">${Math.round(pct(k,all.length))}%</span></div><div class="m sm">Words are drilled in spaced rounds, re-tested in a final check, then resurface for review after 1, 3, 7, 14 and 30 days. Each letter loads up to ${C.cap} words on first open.</div><div class="bar" style="margin:0 16px 16px"><i style="width:${pct(k,all.length)}%"></i></div></div>${dueN?`<div class="card"><button class="li" onclick="review()"><span class="av">↻</span><span class="tx"><b>Spaced review</b><small>${dueN} mastered word${dueN>1?'s':''} due for a recall check</small></span><span class="m sm">START</span></button></div>`:''}
+ <div class="card">${Ls.map((l,i)=>{const w=T[i],n=w.filter(lk).length,got=P(l);return`<button class="li" onclick="letter('${l}')"><span class="av ${n&&n==w.length?'dn':''}">${l.toUpperCase()}</span><span class="tx"><b>Letter ${l.toUpperCase()}</b><small>${got?`${w.length} words · ${sets(l).length} sets · ${n} mastered`:`${w.length} curated ★ · tap to load up to ${C.cap}`}</small><span class="bar"><i style="width:${pct(n,w.length)}%"></i></span></span><span class="m">›</span></button>`}).join('')}</div>`)}
+async function letter(l){await ensure(l);const ss=sets(l),cs=W[l]||[];
+ shell(`<button onclick="home()">←</button><b>Letter ${l.toUpperCase()}</b><span class="sm">${words(l).length} words</span>`,`<div class="card">${ss.map((s,i)=>{const n=s.filter(lk).length,d=n==s.length;return`<button class="li" onclick="start('${l}',${i})"><span class="av ${d?'dn':''}">${d?'✓':i+1}</span><span class="tx"><b>Set ${i+1}${cs.includes(s[0])?' ★':''}</b><small>${s.length} words · ${n} mastered</small><span class="bar"><i style="width:${pct(n,s.length)}%"></i></span></span><span class="m sm">${d?'REDO':n?'CONTINUE':'START'}</span></button>`}).join('')}</div>`)}
+let Q=null;
+async function start(l,i){let ws=sets(l)[i];shell(`<b>Loading set…</b>`,`<div class="card">Fetching definitions, synonyms and examples from the free Dictionary and Datamuse APIs. This only happens once per word.</div>`);
+ if(ws.every(lk))ws.forEach(w=>{delete S.m[w];if(S.st[w])S.st[w].c=0});
+ const pad=ws.length<8?shuf(Object.values(W).flat().filter(w=>!ws.includes(w))).slice(0,8):[];
+ await Promise.all([...ws,...pad].map(info));sv();const ok=w=>S.info[w];ws=ws.filter(ok);
+ if(ws.length<2)return shell(`<button onclick="home()">← Letters</button><b>Offline?</b><span></span>`,`<div class="card">Couldn't reach the dictionary APIs. Open this file with internet access (a local file or any host works) and try again.</div>`);
+ Q=mk({l,i,ws,dp:[...ws,...pad.filter(ok)]});next()}
+async function review(){const w0=Object.keys(S.m).filter(due).sort((a,b)=>S.m[a].t-S.m[b].t).slice(0,20);if(!w0.length)return;
+ shell(`<b>Loading review…</b>`,`<div class="card"><div class="m">Fetching word data…</div></div>`);
+ const pad=shuf(Object.values(W).flat().filter(w=>!w0.includes(w))).slice(0,8);await Promise.all([...w0,...pad].map(info));sv();const ok=w=>S.info[w],ws=w0.filter(ok);if(ws.length<2)return home();
+ Q=mk({l:'a',i:0,ws,dp:[...ws,...pad.filter(ok)],rv:1,need:1});next()}
+function build(w,t){const I=S.info[w],oth=Q.dp.filter(x=>x!=w).map(x=>S.info[x]);let ans,d;
+ if(t=='d'){ans=cl(I.d);d=[...new Set(shuf(oth).sort((a,b)=>(b.p==I.p)-(a.p==I.p)).map(x=>cl(x.d)))].filter(x=>x!=ans).slice(0,3)}
+ else{const own=t=='s'?I.s:I.a,trap=(t=='s'?I.a:I.s)[0],ex=[...I.s,...I.a,w];ans=own[Math.random()*Math.min(3,own.length)|0];
+  d=[...(trap?[trap]:[]),...uq(shuf(oth.flatMap(x=>x.s.concat(x.a)))).filter(x=>!ex.includes(x))].slice(0,3)}
+ return d.length<3?null:{ans,opts:shuf([ans,...d])}}
+function ask(w){const q=Q,I=S.info[w],s=q.st[w],av=['d','s','a'].filter(k=>C['t'+k]&&(k=='d'||I[k].length)),L=av.length?av:['d'];
+ let t=q.phase=='final'?L[Math.random()*L.length|0]:L[(s.c+s.lap)%L.length],b=build(w,t);if(!b){t='d';b=build(w,'d')}q.cur={w,t,...b,done:0};draw()}
+function next(){const q=Q;
+ if(q.phase=='final'){if(q.fq.length)return ask(q.fq.shift());if(q.miss.length){q.phase='learn';q.rt=q.miss;q.qu=shuf(q.miss);q.miss=[];return next()}return fin()}
+ if(!q.qu.length){if(q.rv)return fin();q.phase='final';q.fq=shuf(q.rt||q.ws);q.rt=null;q.miss=[];if(q.fq[0]==q.last&&q.fq.length>1)q.fq.push(q.fq.shift());return next()}
+ let w=q.qu.shift();
+ if(w==q.last){if(q.qu.length){const x=q.qu.shift();q.qu.unshift(w);w=x}else{const f=q.ws.filter(x=>q.dn[x]&&x!=w);if(f.length){q.qu.unshift(w);w=f[Math.random()*f.length|0]}}}
+ ask(w)}
+const bar=()=>{const n=Q.ws.filter(w=>Q.dn[w]).length;return`<button onclick="${Q.rv?'home()':`letter('${Q.l}')`}">✕</button><b>${Q.rv?'Spaced review':`Set ${Q.i+1} · Letter ${Q.l.toUpperCase()}`}</b><span class="sm">${Q.phase=='final'?'Final check':n+'/'+Q.ws.length}</span>`};
+function draw(){const c=Q.cur,I=S.info[c.w],q=Q;if(!c.done){const tag=q.phase=='final'?'Final check':q.st[c.w].n?'Review':'New Word';
+ return shell(bar(),`<div class="sheet"><div class="top"><div class="tt">${tag}</div><div class="ss">${{d:'Choose the best definition.',s:'Choose the closest synonym.',a:'Choose the opposite.'}[c.t]}</div></div><div class="word">${esc(c.w)}</div>${c.opts.map((o,i)=>`<button class="opt" onclick="ans(${i})"><span class="ol">${'ABCD'[i]}</span><span class="ot">${esc(o)}</span></button>`).join('')}</div>`)}
+ const s=q.st[c.w],rem=q.ws.filter(w=>!q.dn[w]).length,need=q.need-s.c,ex=I.e?esc(I.e).replace(new RegExp('\\b('+c.w+'\\w*)','gi'),'<b>$1</b>'):'';
+ const b=q.phase=='final'?(c.ok?['ok','Correct!','Final check: this word is locked in.']:['no','Not quite','Missed in the final check — it goes back for more practice.']):
+  c.ok?(c.lk?['ok','Mastered!',q.rv?'Refreshed — it returns at a longer interval.':'Locked in. It comes back in the final check.']:q.dn[c.w]?['ok','Correct!','Still locked in.']:['ok','Correct!',`${need} more correct answer${need>1?'s':''} to lock it — it returns after about ${c.d} other words.`]):['no','Not quite',`It comes back after about ${c.d} other words.`];
+ const pr=q.phase=='final'?`Final check: ${q.fq.length} word${q.fq.length==1?'':'s'} left`:q.rv?`${rem} word${rem==1?'':'s'} left to refresh`:`Master ${rem} more word${rem==1?'':'s'} to reach the final check`;
+ shell(bar(),`<div class="sheet"><div class="ban ${b[0]}"><b>${b[1]}</b><small>${b[2]}</small></div><div class="word">${esc(c.w)} <button class="link" onclick="speak('${c.w}')">🔊</button><i>${I.p}</i></div>
+ <div class="ln ok">✓ ${esc(cl(I.d))}</div>${c.t!='d'?`<div class="ln ok">✓ ${c.t=='s'?'Synonym':'Antonym'}: ${esc(c.ans)}</div>`:''}${c.ok?'':`<div class="ln no">✗ You chose: ${esc(c.opts[c.pk])}</div>`}
+ ${ex?`<div class="ex" style="padding-top:12px">${ex}</div>`:''}<div class="chips">${I.s.slice(0,4).map(x=>`<span class="chip">≈ ${esc(x)}</span>`).join('')}${I.a.slice(0,3).map(x=>`<span class="chip">≠ ${esc(x)}</span>`).join('')}</div>
+ <div class="prog">${pr}<span class="bar"><i style="width:${pct(q.ws.length-rem,q.ws.length)}%"></i></span></div><button class="next" onclick="next()">Next word →</button></div>`);if(C.sp)speak(c.w)}
+function ans(i){const c=Q.cur;if(c.done||i>=c.opts.length)return;const q=Q,w=c.w,s=q.st[w],gm=GM[C.gap]||1;c.pk=i;c.done=1;c.ok=c.opts[i]==c.ans;q.seen[w]=1;if(!(w in q.first))q.first[w]=c.ok;q.step++;s.n++;q.last=w;
+ const place=d=>{const p=Math.min(d,q.qu.length);q.qu.splice(p,0,w);c.d=p},miss=()=>{delete S.m[w];q.dn[w]=0;s.c=0;s.lap++},bad=Math.max(2,Math.round(3*gm));
+ if(q.phase=='final'){if(!c.ok){miss();q.miss.push(w)}}
+ else if(q.dn[w]){if(!c.ok){miss();place(bad)}}
+ else if(c.ok){s.c++;if(s.c>=q.need){q.dn[w]=1;c.lk=1;const o=S.m[w];S.m[w]={l:q.rv&&!q.lapsed[w]?(o&&o.l||0)+1:0,t:Date.now()}}else place(Math.max(3,Math.round(GAP[Math.min(s.c-1,3)]*gm/(1+.4*s.lap))))}
+ else{s.c=0;s.lap++;q.lapsed[w]=1;place(bad)}
+ S.st[w]={n:s.n,c:s.c,lap:s.lap};sv();draw()}
+function speak(w){const I=S.info[w],t=()=>{try{speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(w))}catch(e){}};I&&I.au?new Audio(I.au).play().catch(t):t()}
+function fin(){if(Q.rv)return shell(`<b>Spaced review</b>`,`<div class="sheet"><div class="ban ok"><b>Review complete ✓</b><small>${Q.ws.length} words refreshed — they return at longer intervals.</small></div><button class="next" onclick="home()">Back home</button></div>`);const f=Object.values(Q.first).filter(Boolean).length,n=Q.ws.length,more=Q.i+1<sets(Q.l).length;
+ shell(bar(),`<div class="sheet"><div class="ban ok"><b>Set complete 🔒</b><small>All ${n} words mastered</small></div><div class="word" style="justify-content:center">${f} / ${n}</div><div class="m" style="text-align:center;padding-bottom:16px">right on the first try</div>${more?`<button class="next" onclick="start('${Q.l}',${Q.i+1})">Next set →</button>`:''}<button class="next" style="background:var(--bg);color:var(--t)" onclick="letter('${Q.l}')">Back to ${Q.l.toUpperCase()}</button></div>`)}
+const rw=(a,b)=>`<div class="row set"><span>${a}</span><span>${b}</span></div>`,sel=(k,o)=>`<select onchange="cfg('${k}',this.value)">${o.map(([v,n])=>`<option value="${v}" ${C[k]==v?'selected':''}>${n}</option>`).join('')}</select>`,
+ rng=(k,a,b,st=1)=>`<input type=range min=${a} max=${b} step=${st} value=${C[k]} oninput="this.nextSibling.textContent=this.value" onchange="cfg('${k}',this.value)"> <b>${C[k]}</b>`,chk=k=>`<input type=checkbox ${C[k]?'checked':''} onchange="cfg('${k}',+this.checked)">`;
+function cfg(k,v){C[k]=/^\d+$/.test(v)?+v:v;S.cfg=C;sv();th()}
+function settings(){shell(`<button onclick="home()">← Back</button><b>Settings</b><span></span>`,`<div class="card">${rw('Theme',sel('theme',[['light','Light'],['dark','Dark (graphite)'],['black','Black (AMOLED)'],['paper','Paper'],['auto','Match device']]))}
+ ${rw('Correct answers to master',rng('streak',2,5))}${rw('Spacing between repeats',sel('gap',[['tight','Tight'],['normal','Normal'],['wide','Wide']]))}${rw('Words per letter (max)',rng('cap',500,1000,100))}${rw('Extra-word difficulty',sel('band',[['easy','Easy'],['mid','Medium'],['hard','Hard'],['exam','Exam-rare']]))}${rw('Words per set',rng('size',10,20))}${rw('Definition questions',chk('td'))}${rw('Synonym questions',chk('ts'))}${rw('Antonym questions',chk('ta'))}${rw('Pronounce after answering',chk('sp'))}</div>
+ <div class="card"><b>Backup</b><div class="m sm">Copy to save progress; paste a saved copy to restore.</div><textarea id="b">${esc(JSON.stringify({m:S.m,st:S.st,cfg:S.cfg}))}</textarea>
+ <button class="btn g" onclick="rest()">Restore from text</button><button class="btn g" onclick="if(confirm('Re-fetch all words and definitions?')){S.info={};sv();Object.keys(localStorage).filter(k=>/^wp[a-z]$/.test(k)).forEach(k=>localStorage.removeItem(k));for(const k in MEM)delete MEM[k];home()}">Refresh word bank</button><button class="btn g" onclick="if(confirm('Erase all progress?')){S.m={};S.st={};sv();home()}">Reset progress</button></div>`)}
+function rest(){try{const o=JSON.parse(document.getElementById('b').value);S.m=o.m||{};S.st=o.st||{};mig();S.cfg=o.cfg||{};C=Object.assign({},DF,S.cfg);sv();th();home()}catch(e){alert('Not a valid backup.')}}
+document.addEventListener('keydown',e=>{if(!Q||!Q.cur)return;if(Q.cur.done){if(e.key=='Enter')next()}else{const k='1234abcd'.indexOf(e.key.toLowerCase());if(k>=0&&e.key.length==1)ans(k%4)}});
+document.addEventListener('pointerdown',e=>{const t=e.target.closest('button');if(!t)return;const r=t.getBoundingClientRect(),i=document.createElement('i'),d=Math.max(r.width,r.height)*2;i.className='rip';i.style.cssText=`width:${d}px;height:${d}px;left:${e.clientX-r.left-d/2}px;top:${e.clientY-r.top-d/2}px`;t.appendChild(i);setTimeout(()=>i.remove(),600)});
+home();
+</script></body></html>
