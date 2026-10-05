@@ -30,7 +30,7 @@ const $=document.getElementById('app'),DM='https://api.datamuse.com/words',FD='h
 const ld=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
 const sv=()=>{try{localStorage.setItem('wl3',JSON.stringify(S))}catch(e){}};
 let S=Object.assign({m:{},st:{},info:{},cfg:{}},ld('wl3',{}));
-const DF={theme:'light',gap:'normal',cap:500,band:'mid',streak:3,size:20,td:1,ts:1,ta:1,sp:0};let C=Object.assign({},DF,S.cfg);
+const DF={theme:'light',gap:'normal',cap:500,band:'hard',streak:3,size:20,td:1,ts:1,ta:1,sp:0};let C=Object.assign({},DF,S.cfg);
 const th=()=>document.documentElement.dataset.theme=C.theme=='auto'?(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'):C.theme;th();
 const WL=`a abandon abate abdicate aberration abhor abject abrupt absolve abstain abstruse acquiesce acrimony adamant adept admonish adroit adulation affable affluent alacrity alleviate aloof altruism ambiguous ameliorate amiable anomaly apathy appease arbitrary arduous ascertain assuage astute audacious austere aversion
 b banal belligerent benevolent benign bewilder blatant bolster brevity brittle bucolic burgeon bustle barren blithe
@@ -70,9 +70,9 @@ async function info(w){if(S.info[w])return S.info[w];const j=await q(FD+w),e=Arr
   o.s.push(...s.map(x=>x.word));o.a.push(...a.map(x=>x.word));const df=d[0]&&d[0].defs&&d[0].defs[0];if(df){o.d=df.split('\t')[1];o.p=({n:'noun',v:'verb',adj:'adjective',adv:'adverb'})[df.split('\t')[0]]||''}}
  o.s=uq(o.s).filter(x=>x!=w).slice(0,6);o.a=uq(o.a).filter(x=>x!=w).slice(0,4);if(o.d)S.info[w]=o;return o}
 const shell=(h,b)=>{$.innerHTML=`<div class="hd">${h}</div><div class="wrap">${b}</div>`;scrollTo(0,0)};
-const BANDS={easy:[3,80],mid:[.3,40],hard:[.1,10],exam:[.05,4]},MEM={},P=l=>MEM[l]||(MEM[l]=ld('wp'+l,null));
+const BANDS={easy:[3,80],mid:[1.5,20],hard:[.1,2],exam:[.05,1]},MEM={},P=l=>MEM[l]||(MEM[l]=ld('wp'+l,null));
 const BAD=/plural of|past tense|past participle|participle of|alternative (form|spelling)|variant (of|spelling)|misspelling|abbreviation|surname|given name|a town|a city|a river|capital of|a genus/i;
-const words=l=>{const cur=W[l]||[],cs=new Set(cur),[lo,hi]=BANDS[C.band];return[...cur,...(P(l)||[]).filter(x=>!cs.has(x[0])&&x[1]>=lo&&x[1]<=hi).sort((a,b)=>b[1]-a[1]).map(x=>x[0])].slice(0,C.cap)};
+const words=l=>{const cur=W[l]||[],cs=new Set(cur),[lo,hi]=BANDS[C.band];return[...cur,...(P(l)||[]).filter(x=>!cs.has(x[0])&&x[1]>=lo&&x[1]<=hi).sort((a,b)=>b[1]-a[1]).map(x=>x[0])].filter(w=>!SK.has(w)).slice(0,C.cap)};
 async function ensure(l){if(P(l))return;shell(`<b>Building letter ${l.toUpperCase()}</b>`,`<div class="card"><div class="m">Fetching more words from the free Datamuse API (one-time, then cached).<div class="bar"><i id="pg" style="width:4%"></i></div></div></div>`);
  const jobs=[...'abcdefghijklmnopqrstuvwxyz'].map(x=>`${DM}?sp=${l}${x}*&md=df&max=300`),m=new Map();let n=0;
  await Promise.all(jobs.map(async u=>{(await q(u)).forEach(o=>{if(!/^[a-z]{5,14}$/.test(o.word)||!o.defs||!o.defs.some(d=>!BAD.test(d)))return;const f=+((o.tags||[]).find(t=>t[0]=='f')||'f:0').slice(2);if(f>=.05&&f<=80)m.set(o.word,[o.word,f])});const g=document.getElementById('pg');if(g)g.style.width=++n/jobs.length*100+'%'}));
@@ -81,7 +81,7 @@ const sets=l=>{const w=words(l),o=[];for(let i=0;i<w.length;i+=C.size)o.push(w.s
 const lk=w=>S.m[w],pct=(a,b)=>b?a/b*100:0;
 const cl=x=>String(x).replace(/^\((?:in|di)?transitive\)\s*/i,''),INT=[1,3,7,14,30,60],GAP=[5,9,15,24],GM={tight:.7,normal:1,wide:1.6};
 const due=w=>{const m=S.m[w];return m&&m.t&&Date.now()>m.t+INT[Math.min(m.l||0,5)]*864e5};
-const mig=()=>{for(const w in S.m)if(S.m[w]===1)S.m[w]={l:0,t:Date.now()}};mig();
+let SK=new Set(S.sk||[]);const mig=()=>{for(const w in S.m)if(S.m[w]===1)S.m[w]={l:0,t:Date.now()}};mig();
 const mk=o=>{const q=Object.assign({st:{},dn:{},first:{},seen:{},lapsed:{},cur:null,step:0,phase:'learn',miss:[],rt:null,fq:[],qu:[],last:null,need:C.streak},o);
  o.ws.forEach(w=>{const p=S.st[w]||{};q.st[w]={n:p.n||0,lap:p.lap||0,c:o.rv?0:Math.min(p.c||0,q.need-1)};if(!o.rv&&lk(w))q.dn[w]=1});
  if(o.rv)q.qu=shuf(o.ws);else{const U=shuf(o.ws.filter(w=>!q.dn[w]&&!q.st[w].n)),R=o.ws.filter(w=>!q.dn[w]&&q.st[w].n).sort((a,b)=>q.st[a].c-q.st[b].c||q.st[b].lap-q.st[a].lap);
@@ -117,7 +117,7 @@ function next(){const q=Q;
  ask(w)}
 const bar=()=>{const n=Q.ws.filter(w=>Q.dn[w]).length;return`<button onclick="${Q.rv?'home()':`letter('${Q.l}')`}">✕</button><b>${Q.rv?'Spaced review':`Set ${Q.i+1} · Letter ${Q.l.toUpperCase()}`}</b><span class="sm">${Q.phase=='final'?'Final check':n+'/'+Q.ws.length}</span>`};
 function draw(){const c=Q.cur,I=S.info[c.w],q=Q;if(!c.done){const tag=q.phase=='final'?'Final check':q.st[c.w].n?'Review':'New Word';
- return shell(bar(),`<div class="sheet"><div class="top"><div class="tt">${tag}</div><div class="ss">${{d:'Choose the best definition.',s:'Choose the closest synonym.',a:'Choose the opposite.'}[c.t]}</div></div><div class="word">${esc(c.w)}</div>${c.opts.map((o,i)=>`<button class="opt" onclick="ans(${i})"><span class="ol">${'ABCD'[i]}</span><span class="ot">${esc(o)}</span></button>`).join('')}</div>`)}
+ return shell(bar(),`<div class="sheet"><div class="top"><div class="tt">${tag}</div><div class="ss">${{d:'Choose the best definition.',s:'Choose the closest synonym.',a:'Choose the opposite.'}[c.t]}</div></div><div class="word">${esc(c.w)}</div>${c.opts.map((o,i)=>`<button class="opt" onclick="ans(${i})"><span class="ol">${'ABCD'[i]}</span><span class="ot">${esc(o)}</span></button>`).join('')}</div><div style="text-align:center"><button class="link" onclick="skip()">Too easy? Hide this word</button></div>`)}
  const s=q.st[c.w],rem=q.ws.filter(w=>!q.dn[w]).length,need=q.need-s.c,ex=I.e?esc(I.e).replace(new RegExp('\\b('+c.w+'\\w*)','gi'),'<b>$1</b>'):'';
  const b=q.phase=='final'?(c.ok?['ok','Correct!','Final check: this word is locked in.']:['no','Not quite','Missed in the final check — it goes back for more practice.']):
   c.ok?(c.lk?['ok','Mastered!',q.rv?'Refreshed — it returns at a longer interval.':'Locked in. It comes back in the final check.']:q.dn[c.w]?['ok','Correct!','Still locked in.']:['ok','Correct!',`${need} more correct answer${need>1?'s':''} to lock it — it returns after about ${c.d} other words.`]):['no','Not quite',`It comes back after about ${c.d} other words.`];
@@ -133,6 +133,7 @@ function ans(i){const c=Q.cur;if(c.done||i>=c.opts.length)return;const q=Q,w=c.w
  else if(c.ok){s.c++;if(s.c>=q.need){q.dn[w]=1;c.lk=1;const o=S.m[w];S.m[w]={l:q.rv&&!q.lapsed[w]?(o&&o.l||0)+1:0,t:Date.now()}}else place(Math.max(3,Math.round(GAP[Math.min(s.c-1,3)]*gm/(1+.4*s.lap))))}
  else{s.c=0;s.lap++;q.lapsed[w]=1;place(bad)}
  S.st[w]={n:s.n,c:s.c,lap:s.lap};sv();draw()}
+function skip(){const w=Q.cur.w;(S.sk=S.sk||[]).push(w);SK.add(w);Q.ws=Q.ws.filter(x=>x!=w);Q.qu=Q.qu.filter(x=>x!=w);Q.fq=Q.fq.filter(x=>x!=w);sv();next()}
 function speak(w){const I=S.info[w],t=()=>{try{speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(w))}catch(e){}};I&&I.au?new Audio(I.au).play().catch(t):t()}
 function fin(){if(Q.rv)return shell(`<b>Spaced review</b>`,`<div class="sheet"><div class="ban ok"><b>Review complete ✓</b><small>${Q.ws.length} words refreshed — they return at longer intervals.</small></div><button class="next" onclick="home()">Back home</button></div>`);const f=Object.values(Q.first).filter(Boolean).length,n=Q.ws.length,more=Q.i+1<sets(Q.l).length;
  shell(bar(),`<div class="sheet"><div class="ban ok"><b>Set complete 🔒</b><small>All ${n} words mastered</small></div><div class="word" style="justify-content:center">${f} / ${n}</div><div class="m" style="text-align:center;padding-bottom:16px">right on the first try</div>${more?`<button class="next" onclick="start('${Q.l}',${Q.i+1})">Next set →</button>`:''}<button class="next" style="background:var(--bg);color:var(--t)" onclick="letter('${Q.l}')">Back to ${Q.l.toUpperCase()}</button></div>`)}
@@ -141,9 +142,9 @@ const rw=(a,b)=>`<div class="row set"><span>${a}</span><span>${b}</span></div>`,
 function cfg(k,v){C[k]=/^\d+$/.test(v)?+v:v;S.cfg=C;sv();th()}
 function settings(){shell(`<button onclick="home()">← Back</button><b>Settings</b><span></span>`,`<div class="card">${rw('Theme',sel('theme',[['light','Light'],['dark','Dark (graphite)'],['black','Black (AMOLED)'],['paper','Paper'],['auto','Match device']]))}
  ${rw('Correct answers to master',rng('streak',2,5))}${rw('Spacing between repeats',sel('gap',[['tight','Tight'],['normal','Normal'],['wide','Wide']]))}${rw('Words per letter (max)',rng('cap',500,1000,100))}${rw('Extra-word difficulty',sel('band',[['easy','Easy'],['mid','Medium'],['hard','Hard'],['exam','Exam-rare']]))}${rw('Words per set',rng('size',10,20))}${rw('Definition questions',chk('td'))}${rw('Synonym questions',chk('ts'))}${rw('Antonym questions',chk('ta'))}${rw('Pronounce after answering',chk('sp'))}</div>
- <div class="card"><b>Backup</b><div class="m sm">Copy to save progress; paste a saved copy to restore.</div><textarea id="b">${esc(JSON.stringify({m:S.m,st:S.st,cfg:S.cfg}))}</textarea>
- <button class="btn g" onclick="rest()">Restore from text</button><button class="btn g" onclick="if(confirm('Re-fetch all words and definitions?')){S.info={};sv();Object.keys(localStorage).filter(k=>/^wp[a-z]$/.test(k)).forEach(k=>localStorage.removeItem(k));for(const k in MEM)delete MEM[k];home()}">Refresh word bank</button><button class="btn g" onclick="if(confirm('Erase all progress?')){S.m={};S.st={};sv();home()}">Reset progress</button></div>`)}
-function rest(){try{const o=JSON.parse(document.getElementById('b').value);S.m=o.m||{};S.st=o.st||{};mig();S.cfg=o.cfg||{};C=Object.assign({},DF,S.cfg);sv();th();home()}catch(e){alert('Not a valid backup.')}}
+ <div class="card"><b>Backup</b><div class="m sm">Copy to save progress; paste a saved copy to restore.</div><textarea id="b">${esc(JSON.stringify({m:S.m,st:S.st,cfg:S.cfg,sk:S.sk||[]}))}</textarea>
+ <button class="btn g" onclick="rest()">Restore from text</button><button class="btn g" onclick="if(confirm('Re-fetch all words and definitions?')){S.info={};sv();Object.keys(localStorage).filter(k=>/^wp[a-z]$/.test(k)).forEach(k=>localStorage.removeItem(k));for(const k in MEM)delete MEM[k];home()}">Refresh word bank</button><button class="btn g" onclick="if(confirm('Unhide all hidden/known words?')){S.sk=[];SK=new Set();sv();home()}">Unhide known words</button><button class="btn g" onclick="if(confirm('Erase all progress?')){S.m={};S.st={};sv();home()}">Reset progress</button></div>`)}
+function rest(){try{const o=JSON.parse(document.getElementById('b').value);if(o.m)S.m=o.m;if(o.st)S.st=o.st;mig();if(o.cfg)S.cfg=o.cfg;if(o.sk){S.sk=[...new Set([...(S.sk||[]),...o.sk])];SK=new Set(S.sk)}C=Object.assign({},DF,S.cfg);sv();th();home()}catch(e){alert('Not a valid backup.')}}
 document.addEventListener('keydown',e=>{if(!Q||!Q.cur)return;if(Q.cur.done){if(e.key=='Enter')next()}else{const k='1234abcd'.indexOf(e.key.toLowerCase());if(k>=0&&e.key.length==1)ans(k%4)}});
 document.addEventListener('pointerdown',e=>{const t=e.target.closest('button');if(!t)return;const r=t.getBoundingClientRect(),i=document.createElement('i'),d=Math.max(r.width,r.height)*2;i.className='rip';i.style.cssText=`width:${d}px;height:${d}px;left:${e.clientX-r.left-d/2}px;top:${e.clientY-r.top-d/2}px`;t.appendChild(i);setTimeout(()=>i.remove(),600)});
 home();
